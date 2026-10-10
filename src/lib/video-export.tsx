@@ -21,6 +21,20 @@ function artworkStyles() {
   return styles;
 }
 
+function sharedArtworkCss() {
+  const tokens = getComputedStyle(document.documentElement);
+  const rules: string[] = [];
+  function collect(list: CSSRuleList) {
+    for (const rule of list) {
+      if (rule instanceof CSSStyleRule && /^\.(art-|scene-art)/.test(rule.selectorText)) {
+        rules.push(rule.cssText.replace(/var\((--[\w-]+)\)/g, (_, name: string) => tokens.getPropertyValue(name).trim()));
+      } else if (rule instanceof CSSGroupingRule) collect(rule.cssRules);
+    }
+  }
+  for (const sheet of document.styleSheets) { try { collect(sheet.cssRules); } catch { /* Cross-origin font sheets are not artwork styles. */ } }
+  return rules.join('\n');
+}
+
 export async function createFrameRenderer(project: StudioProject, resolution: number) {
   await document.fonts.ready;
   const canvas = document.createElement('canvas');
@@ -29,11 +43,13 @@ export async function createFrameRenderer(project: StudioProject, resolution: nu
   const context = canvas.getContext('2d');
   if (!context) throw new Error('Canvas rendering is unavailable in this browser.');
   const styles = artworkStyles();
+  const sharedCss = sharedArtworkCss();
   return { canvas, async draw(time: number) {
     const position = sceneAtTime(project, time);
     const markup = renderToStaticMarkup(createElement(ScenePreview, { project, scene: position.scene, elapsed: position.localTime }));
     const svg = new DOMParser().parseFromString(markup, 'image/svg+xml').documentElement;
     svg.setAttribute('width', String(canvas.width)); svg.setAttribute('height', String(canvas.height));
+    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style'); style.textContent = sharedCss; svg.prepend(style);
     [svg, ...svg.querySelectorAll('[class]')].forEach(element => {
       const css = styles.get(element.getAttribute('class') ?? '');
       if (css) element.setAttribute('style', css);
@@ -49,15 +65,17 @@ export async function createFrameRenderer(project: StudioProject, resolution: nu
   } };
 }
 
-export async function exportVideo(options: { project: StudioProject; resolution: number; audioUrl: string; volume: number; muted: boolean; signal: AbortSignal; onProgress: (n: number) => void }) {
-  const { Output, Mp4OutputFormat, BufferTarget, CanvasSource, AudioBufferSource, canEncodeVideo, canEncodeAudio } = await import('mediabunny');
+export async function exportVideo(options: { project: StudioProject; resolution: number; container: 'mp4' | 'webm'; audioUrl: string; volume: number; muted: boolean; signal: AbortSignal; onProgress: (n: number) => void }) {
+  const { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, AudioBufferSource, canEncodeVideo, canEncodeAudio } = await import('mediabunny');
   const renderer = await createFrameRenderer(options.project, options.resolution);
   const { width, height } = renderer.canvas;
-  if (!await canEncodeVideo('avc', { width, height, frameRate: 30 })) throw new Error('MP4 encoding is unavailable. Use a current Chrome or Edge browser, or download your editable project.');
+  const codec = options.container === 'mp4' ? 'avc' : 'vp9';
+  const audioCodec = options.container === 'mp4' ? 'aac' : 'opus';
+  if (!await canEncodeVideo(codec, { width, height, frameRate: 30 })) throw new Error(`${options.container.toUpperCase()} encoding is unavailable in this browser. Try the other video format or download your editable project.`);
   const duration = totalDuration(options.project.scenes);
   let mixed: AudioBuffer | undefined;
   if (options.audioUrl && !options.muted && options.volume > 0) {
-    if (!await canEncodeAudio('aac', { numberOfChannels: 2, sampleRate: 48000 })) throw new Error('This browser cannot encode MP4 audio. Mute the track for a silent export or use Chrome/Edge.');
+    if (!await canEncodeAudio(audioCodec, { numberOfChannels: 2, sampleRate: 48000 })) throw new Error('This browser cannot encode audio in the selected format. Try WebM or mute the track for a silent export.');
     const decoder = new AudioContext();
     let decoded: AudioBuffer;
     try { decoded = await decoder.decodeAudioData(await (await fetch(options.audioUrl)).arrayBuffer()); }
@@ -70,10 +88,10 @@ export async function exportVideo(options: { project: StudioProject; resolution:
   }
   options.signal.throwIfAborted();
   const target = new BufferTarget();
-  const output = new Output({ target, format: new Mp4OutputFormat() });
-  const video = new CanvasSource(renderer.canvas, { codec: 'avc', bitrate: options.resolution === 1920 ? 8_000_000 : 3_000_000 });
+  const output = new Output({ target, format: options.container === 'mp4' ? new Mp4OutputFormat() : new WebMOutputFormat() });
+  const video = new CanvasSource(renderer.canvas, { codec, bitrate: options.resolution === 1920 ? 8_000_000 : 3_000_000 });
   output.addVideoTrack(video, { frameRate: 30 });
-  const audio = mixed ? new AudioBufferSource({ codec: 'aac', bitrate: 128000 }) : undefined;
+  const audio = mixed ? new AudioBufferSource({ codec: audioCodec, bitrate: 128000 }) : undefined;
   if (audio) output.addAudioTrack(audio);
   try {
     await output.start();
@@ -89,7 +107,7 @@ export async function exportVideo(options: { project: StudioProject; resolution:
     options.signal.throwIfAborted();
     if (!target.buffer) throw new Error('The encoder did not return a video.');
     options.onProgress(1);
-    return new Blob([target.buffer], { type: 'video/mp4' });
+    return new Blob([target.buffer], { type: `video/${options.container}` });
   } catch (error) { if (output.state !== 'finalized') await output.cancel(); throw error; }
 }
 
