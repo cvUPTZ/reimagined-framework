@@ -257,7 +257,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="field"><span>{label}</span>{children}</label>;
 }
 
-function PropertiesPanel({ tab, project, scene, onProject, onScene, onBuild, onExport, onImport, safeZones }: { tab: StudioTab; project: StudioProject; scene?: Scene; onProject: (patch: Partial<StudioProject>) => void; onScene: (patch: Partial<Scene>) => void; onBuild: () => void; onExport: () => void; onImport: () => void; safeZones: boolean }) {
+function PropertiesPanel({ tab, project, scene, onProject, onScene, onBuild, onExport, onImport, safeZones }: { tab: StudioTab; project: StudioProject; scene: Scene | undefined; onProject: (patch: Partial<StudioProject>) => void; onScene: (patch: Partial<Scene>) => void; onBuild: () => void; onExport: () => void; onImport: () => void; safeZones: boolean }) {
   const titles = { ideas: ["مختبر الأفكار", "حوّل فكرة رياضية إلى قصة قصيرة"], scenes: ["خصائص المشهد", `المشهد ${scene?.label ?? "—"} · ${scene?.title ?? ""}`], audio: ["الصوت والتعليق", "رتّب صوتك وموسيقاك"], export: ["تصدير الفيديو", "افحص مشروعك قبل الإخراج"] } as const;
   return <aside className="properties">
     <div className="properties-heading"><div><h2>{titles[tab][0]}</h2><p>{titles[tab][1]}</p></div><Button variant="icon" size="icon" aria-label="إعدادات اللوحة"><SlidersHorizontal size={17} /></Button></div>
