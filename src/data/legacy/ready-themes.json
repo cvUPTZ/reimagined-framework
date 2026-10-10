@@ -1,0 +1,296 @@
+{
+ "riemann": {
+  "bg": "ocean",
+  "bgfx": "grid",
+  "pal": "ocean",
+  "col": "#4da3ff"
+ },
+ "venn": {
+  "bg": "violet",
+  "bgfx": "bokeh",
+  "pal": "candy",
+  "col": "#c084fc"
+ },
+ "thales": {
+  "bg": "forest",
+  "bgfx": "grid",
+  "pal": "forest",
+  "col": "#7be07b"
+ },
+ "pct": {
+  "bg": "ember",
+  "bgfx": "pulse",
+  "pal": "gold",
+  "col": "#ffb020"
+ },
+ "stair": {
+  "bg": "midnight",
+  "bgfx": "stars",
+  "pal": "aurora",
+  "col": "#2ee6c5"
+ },
+ "tangent": {
+  "bg": "plum",
+  "bgfx": "aurora",
+  "pal": "neon",
+  "col": "#ff7ac6"
+ },
+ "area": {
+  "bg": "steel",
+  "bgfx": "grid",
+  "pal": "sunset",
+  "col": "#ffa94d"
+ },
+ "flip": {
+  "bg": "violet",
+  "bgfx": "stars",
+  "pal": "ice",
+  "col": "#9b8cff"
+ },
+ "balance": {
+  "bg": "chalk",
+  "bgfx": "none",
+  "pal": "gold",
+  "col": "#ffd166"
+ },
+ "fraction": {
+  "bg": "plum",
+  "bgfx": "bokeh",
+  "pal": "candy",
+  "col": "#ff8fb1"
+ },
+ "numline": {
+  "bg": "midnight",
+  "bgfx": "grid",
+  "pal": "ice",
+  "col": "#6ee7ff"
+ },
+ "quad": {
+  "bg": "ember",
+  "bgfx": "aurora",
+  "pal": "fire",
+  "col": "#ff7a45"
+ },
+ "trig": {
+  "bg": "violet",
+  "bgfx": "stars",
+  "pal": "neon",
+  "col": "#c084fc"
+ },
+ "dist": {
+  "bg": "forest",
+  "bgfx": "grid",
+  "pal": "ice",
+  "col": "#7be07b"
+ },
+ "ivt": {
+  "bg": "ocean",
+  "bgfx": "grid",
+  "pal": "ocean",
+  "col": "#4da3ff"
+ },
+ "convex": {
+  "bg": "plum",
+  "bgfx": "aurora",
+  "pal": "neon",
+  "col": "#ff7ac6"
+ },
+ "growth": {
+  "bg": "ember",
+  "bgfx": "pulse",
+  "pal": "fire",
+  "col": "#ff7a45"
+ },
+ "asym": {
+  "bg": "midnight",
+  "bgfx": "grid",
+  "pal": "ice",
+  "col": "#6ee7ff"
+ },
+ "squeeze": {
+  "bg": "violet",
+  "bgfx": "stars",
+  "pal": "candy",
+  "col": "#c084fc"
+ },
+ "zoom": {
+  "bg": "steel",
+  "bgfx": "grid",
+  "pal": "sunset",
+  "col": "#ffa94d"
+ },
+ "expk": {
+  "bg": "ember",
+  "bgfx": "stars",
+  "pal": "fire",
+  "col": "#ff922b"
+ },
+ "inverse": {
+  "bg": "violet",
+  "bgfx": "grid",
+  "pal": "aurora",
+  "col": "#b197fc"
+ },
+ "logadd": {
+  "bg": "ocean",
+  "bgfx": "bokeh",
+  "pal": "ocean",
+  "col": "#3bc9db"
+ },
+ "signarea": {
+  "bg": "steel",
+  "bgfx": "pulse",
+  "pal": "sunset",
+  "col": "#ff922b"
+ },
+ "revolve": {
+  "bg": "midnight",
+  "bgfx": "stars",
+  "pal": "aurora",
+  "col": "#2ee6c5"
+ },
+ "domino": {
+  "bg": "forest",
+  "bgfx": "stars",
+  "pal": "forest",
+  "col": "#51cf66"
+ },
+ "crot": {
+  "bg": "violet",
+  "bgfx": "stars",
+  "pal": "neon",
+  "col": "#da77f2"
+ },
+ "triangle": {
+  "bg": "forest",
+  "bgfx": "grid",
+  "pal": "forest",
+  "col": "#69db7c"
+ },
+ "carg": {
+  "bg": "violet",
+  "bgfx": "bokeh",
+  "pal": "candy",
+  "col": "#e599f7"
+ },
+ "cond": {
+  "bg": "ocean",
+  "bgfx": "bokeh",
+  "pal": "ocean",
+  "col": "#339af0"
+ },
+ "binom": {
+  "bg": "ember",
+  "bgfx": "grid",
+  "pal": "gold",
+  "col": "#fcc419"
+ },
+ "euclid": {
+  "bg": "chalk",
+  "bgfx": "none",
+  "pal": "gold",
+  "col": "#ffd43b"
+ },
+ "clock": {
+  "bg": "midnight",
+  "bgfx": "stars",
+  "pal": "aurora",
+  "col": "#20c997"
+ },
+ "dot": {
+  "bg": "steel",
+  "bgfx": "grid",
+  "pal": "ice",
+  "col": "#74c0fc"
+ },
+ "gap": {
+  "bg": "ember",
+  "bgfx": "pulse",
+  "pal": "fire",
+  "col": "#ff6b6b"
+ },
+ "pythag": {
+  "bg": "steel",
+  "bgfx": "grid",
+  "pal": "sunset",
+  "col": "#ffa94d"
+ },
+ "sqrt": {
+  "bg": "ocean",
+  "bgfx": "grid",
+  "pal": "ocean",
+  "col": "#4da3ff"
+ },
+ "diffsq": {
+  "bg": "plum",
+  "bgfx": "bokeh",
+  "pal": "candy",
+  "col": "#ff8fb1"
+ },
+ "chain": {
+  "bg": "ember",
+  "bgfx": "pulse",
+  "pal": "fire",
+  "col": "#ff6b6b"
+ },
+ "sieve": {
+  "bg": "midnight",
+  "bgfx": "stars",
+  "pal": "aurora",
+  "col": "#2ee6c5"
+ },
+ "scale": {
+  "bg": "plum",
+  "bgfx": "bokeh",
+  "pal": "candy",
+  "col": "#ff8fb1"
+ },
+ "inscr": {
+  "bg": "midnight",
+  "bgfx": "stars",
+  "pal": "aurora",
+  "col": "#2ee6c5"
+ },
+ "mean": {
+  "bg": "ocean",
+  "bgfx": "grid",
+  "pal": "ocean",
+  "col": "#4da3ff"
+ },
+ "rtri": {
+  "bg": "forest",
+  "bgfx": "grid",
+  "pal": "forest",
+  "col": "#7be07b"
+ },
+ "sinx": {
+  "bg": "violet",
+  "bgfx": "stars",
+  "pal": "neon",
+  "col": "#c084fc"
+ },
+ "secant": {
+  "bg": "ember",
+  "bgfx": "aurora",
+  "pal": "fire",
+  "col": "#ff7a45"
+ },
+ "parity": {
+  "bg": "plum",
+  "bgfx": "aurora",
+  "pal": "neon",
+  "col": "#ff7ac6"
+ },
+ "pascal": {
+  "bg": "chalk",
+  "bgfx": "none",
+  "pal": "gold",
+  "col": "#ffd43b"
+ },
+ "tree": {
+  "bg": "forest",
+  "bgfx": "bokeh",
+  "pal": "forest",
+  "col": "#69db7c"
+ }
+}

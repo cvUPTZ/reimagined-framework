@@ -20,3 +20,10 @@
 - [x] Cloud project/media library, richer audio, and brand kits.
 - [ ] AI outlines and stored narration.
 - [ ] Planner and publishing packages; approved integrations last.
+# Legacy content restoration (Cinematic Math Builder v3 → QED Studio)
+- [x] `scripts/extract-legacy-library.mjs`: automated extraction of LIB, READY, INTU and SOLVE into `src/data/legacy/*.json` (122 mistakes, 78 ready videos, 61 intuition videos, 13 solved exercises).
+- [x] `src/lib/legacy-library.ts`: typed loader, search/level filters, conversion of every entry into an editable `StudioProject` (legacy visual model and solve-step diagram state preserved in `scene.legacy`).
+- [x] Library panel: Lessons / Mistakes / Ready videos / Intuition / Solved exercises tabs with search and level filters.
+- [ ] Port the ~78 legacy visual models to the shared renderer (`unsupportedLegacyModels()` lists what is still drawn as "none").
+- [ ] Port the diagnosis engine (case files, prerequisite graphs, re-test checker) and the D1–D7 / H1–H3 audits with their regression tests.
+- [ ] Solve step-by-step working panel and per-step diagrams (`drawSolve`).

@@ -12,6 +12,7 @@ import { buildScenes, defaultBrandKits, duplicateScene, moveScene, totalDuration
 import { phaseNames, phaseOf, phaseClass, referenceProject, threeBlueOneBrownProject, originalZipProject, bacLogarithmProject, bacIntegralsProject, timecode } from '@/lib/reference-project';
 import { evaluateMathExpression } from '@/lib/math-engine';
 import { lessonToStudioProject, searchEducationalLessons } from '@/lib/educational-library';
+import { legacyCounts, legacyLevels, legacyToProject, searchLegacy, SOLVE_TYPES, type LegacySource } from '@/lib/legacy-library';
 import { listProjects, getProject, saveProject as persistProject, deleteProject as removeStoredProject, duplicateProject as cloneStoredProject, searchProjects, listSnapshots, createSnapshot, type ProjectMeta, type ProjectSnapshot } from '@/lib/project-store';
 import { VoiceRecorder, isRecordingSupported } from '@/lib/audio-recording';
 
@@ -49,6 +50,8 @@ function Studio() {
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [librarySearch, setLibrarySearch] = useState('');
   const [libraryLevel, setLibraryLevel] = useState('all');
+  const [librarySource, setLibrarySource] = useState<'lessons' | LegacySource>('lessons');
+  const [libraryLimit, setLibraryLimit] = useState(60);
   const [customBuilderOpen, setCustomBuilderOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState('');
   const [projectList, setProjectList] = useState<ProjectMeta[]>([]);
@@ -65,6 +68,9 @@ function Studio() {
   const duration = useMemo(() => totalDuration(project.scenes), [project.scenes]);
   const scene = project.scenes[selected] ?? project.scenes[0];
   const filteredLessons = useMemo(() => searchEducationalLessons(librarySearch, libraryLevel), [librarySearch, libraryLevel]);
+  const legacyEntries = useMemo(() => librarySource === 'lessons' ? [] : searchLegacy(librarySource, librarySearch, libraryLevel), [librarySource, librarySearch, libraryLevel]);
+  const legacyLevelList = useMemo(() => librarySource === 'lessons' ? [] : legacyLevels(librarySource), [librarySource]);
+  const legacyTotals = useMemo(() => legacyCounts(), []);
   const formulaValidation = useMemo(() => evaluateMathExpression(scene?.expression ?? project.expression ?? '', 1), [scene?.expression, project.expression]);
 
   useEffect(() => {
@@ -554,7 +560,36 @@ function Studio() {
             <Search size={14} style={{ position: 'absolute', left: 10, top: 12, color: 'var(--muted-foreground)' }}/>
           </div>
         </div>
-        <div className="library-filter-row">
+        <div className="library-filter-row" role="tablist" aria-label="Library source">
+          {([
+            ['lessons', 'Lessons', null],
+            ['mistake', 'Mistakes', legacyTotals.mistakes],
+            ['ready', 'Ready videos', legacyTotals.ready],
+            ['intuition', 'Intuition', legacyTotals.intuition],
+            ['solve', 'Solved exercises', legacyTotals.solve],
+          ] as const).map(([id, label, count]) => (
+            <Button
+              key={id}
+              role="tab"
+              aria-selected={librarySource === id}
+              variant={librarySource === id ? 'default' : 'outline'}
+              size="sm"
+              style={{ height: 26, fontSize: 10 }}
+              onClick={() => { setLibrarySource(id); setLibraryLevel('all'); setLibraryLimit(60); }}
+            >
+              {label}{count !== null ? ` · ${count}` : ''}
+            </Button>
+          ))}
+        </div>
+        {librarySource !== 'lessons' && <div className="library-filter-row">
+          {['all', ...legacyLevelList].map(lvl => (
+            <Button key={lvl} variant={libraryLevel === lvl ? 'secondary' : 'outline'} size="sm" style={{ height: 26, fontSize: 10 }} onClick={() => { setLibraryLevel(lvl); setLibraryLimit(60); }}>
+              {lvl === 'all' ? 'All levels' : lvl}
+            </Button>
+          ))}
+          <span className="count" style={{ marginLeft: 'auto' }}>{legacyEntries.length} results</span>
+        </div>}
+        {librarySource === 'lessons' && <div className="library-filter-row">
           {(['all', 'BAC 2026', '2AS', '1AS / 4AM'] as const).map(lvl => (
             <Button
               key={lvl}
@@ -566,9 +601,9 @@ function Studio() {
               {lvl === 'all' ? 'All levels' : lvl}
             </Button>
           ))}
-        </div>
+        </div>}
         <div style={{ display: 'grid', gap: 10, maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
-          {filteredLessons.map(lesson => (
+          {librarySource === 'lessons' && filteredLessons.map(lesson => (
             <div key={lesson.id} className="library-card">
               <div className="library-card-header">
                 <div className="library-card-meta">
@@ -597,6 +632,39 @@ function Studio() {
               </div>
             </div>
           ))}
+                  {legacyEntries.slice(0, libraryLimit).map(entry => (
+            <div key={entry.id} className="library-card">
+              <div className="library-card-header">
+                <div className="library-card-meta">
+                  <span className="count">{entry.level}</span>
+                  <span className="count" style={{ color: 'var(--primary)' }}>{entry.source === 'solve' && entry.solveType ? `${SOLVE_TYPES[entry.solveType]?.[0] ?? ''} ${SOLVE_TYPES[entry.solveType]?.[1] ?? entry.solveType}` : entry.chapter}</span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const next = legacyToProject(entry);
+                    if (!next) { setNotice('This library entry could not be converted.'); return; }
+                    load(next);
+                    setPanel(null);
+                    setNotice(`Loaded: ${entry.topic}`);
+                  }}
+                >
+                  <Sparkles size={13}/>Load video
+                </Button>
+              </div>
+              <strong dir="auto">{entry.topic}</strong>
+              <p dir="auto">{entry.hook}</p>
+              <div className="library-mistake-box" dir="auto">
+                <strong>{entry.source === 'intuition' ? 'القاعدة:' : entry.source === 'solve' ? 'التمرين:' : 'فخ شائع:'}</strong>
+                <span>{entry.summary}</span>
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>Visual model: {entry.model}</div>
+            </div>
+          ))}
+          {librarySource !== 'lessons' && legacyEntries.length > libraryLimit && (
+            <Button variant="outline" size="sm" onClick={() => setLibraryLimit(n => n + 60)}>Show more ({legacyEntries.length - libraryLimit} left)</Button>
+          )}
+          {librarySource !== 'lessons' && legacyEntries.length === 0 && <p style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>No entries match this search.</p>}
         </div>
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
           <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setCustomBuilderOpen(o => !o)}>
