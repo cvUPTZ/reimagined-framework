@@ -22,7 +22,6 @@ import {
   Play,
   Plus,
   Redo2,
-  RotateCcw,
   Scissors,
   Settings2,
   ShieldCheck,
@@ -33,7 +32,7 @@ import {
   Upload,
   Volume2,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   buildScenes,
@@ -200,7 +199,7 @@ function Index() {
             </div>
           </div>
           <div className="stage-canvas-area">
-            <div className={`video-frame ${project.format}`} style={{ "--preview-scale": zoom / 74 } as React.CSSProperties}>
+            <div className={`video-frame ${project.format}`} style={{ "--preview-scale": zoom / 74 } as CSSProperties}>
               <div className="frame-grid" />
               {safeZones && <div className="safe-zone"><span>منطقة آمنة</span></div>}
               <div className={`scene-visual kind-${scene?.kind ?? "hook"}`}>
@@ -243,7 +242,7 @@ function Index() {
   );
 }
 
-function RailButton({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void }) {
+function RailButton({ icon, label, active, onClick }: { icon: ReactNode; label: string; active?: boolean; onClick?: () => void }) {
   return <button className={`rail-button ${active ? "active" : ""}`} aria-pressed={active} onClick={onClick}><span>{icon}</span><small>{label}</small></button>;
 }
 
@@ -254,7 +253,7 @@ function SceneCard({ scene, active, onClick, onMove }: { scene: Scene; active: b
   </article>;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="field"><span>{label}</span>{children}</label>;
 }
 
