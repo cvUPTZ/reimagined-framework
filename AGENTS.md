@@ -13,3 +13,5 @@
 
 - Reference demo scenes live separately from the original project defaults; optional scene presentation fields preserve existing saved project compatibility.
 - Render scene artwork through the shared ScenePreview component so sidebar thumbnails and the main canvas always display the same project content.
+- Version and validate project interchange in a dedicated migration module, retaining legacy payloads so unsupported original effects are not silently lost.
+- Compute motion from scene-local time and export the shared ScenePreview artwork through browser canvas and WebCodecs so scrubbing and downloads use the same scene definition.

@@ -255,6 +255,8 @@ h2 { margin:0; font-size:12px; font-weight:600; }
 .export-summary strong { font-size:13px; }
 .export-summary span { color:var(--muted-foreground); font-size:10px; }
 .export-note { font-size:11px; color:var(--muted-foreground); margin:0; line-height:1.7; }
+.compatibility-notice { position:fixed; bottom:32px; left:90px; right:20px; z-index:60; display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border-strong); padding:12px 16px; border-radius:4px; font-size:11px; line-height:1.6; }
+.compatibility-notice > span { flex:1; min-width:0; }
 .toast { position:fixed; bottom:38px; left:50%; transform:translateX(-50%); z-index:70; display:flex; align-items:center; gap:12px; padding:8px 12px 8px 18px; background:var(--secondary); border:1px solid var(--border-strong); border-radius:5px; box-shadow:var(--stage-shadow); max-width:90vw; color:var(--foreground); font-size:12px; }
 .toast > svg { flex-shrink:0; color:var(--primary); }
 @keyframes reveal { from { opacity:0; } to { opacity:1; } }
