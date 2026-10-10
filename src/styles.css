@@ -309,5 +309,11 @@ h2 { margin:0; font-size:12px; font-weight:600; }
   .topbar { gap:7px; }
   .project-title { min-width:0; }
   .project-title input { min-width:0; }
+  .timeline-toolbar { padding:0 8px; }
+  .timeline-toolbar > div { gap:3px; }
+  .timeline-toolbar .timeline-total { display:none; }
+  .timeline-toolbar button { width:27px; }
+  .timeline-zoom input { width:43px; }
+  .timeline-zoom { gap:3px; }
 }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; } }
