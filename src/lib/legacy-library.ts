@@ -4,6 +4,7 @@ import readyJson from '@/data/legacy/ready.json';
 import intuitionJson from '@/data/legacy/intuition.json';
 import solveJson from '@/data/legacy/solve.json';
 import solveTypesJson from '@/data/legacy/solve-types.json';
+import { hasLegacyRenderer, type VisualStage } from './legacy-visuals';
 import { defaultBrandKits, makeId, type Scene, type StudioProject, type VisualModelType } from './studio';
 
 /**
@@ -139,14 +140,14 @@ export function unsupportedLegacyModels(): string[] {
   const used = new Set<string>();
   for (const s of ['mistake', 'ready', 'intuition', 'solve'] as const) for (const e of listLegacy(s)) used.add(e.model);
   used.delete('none');
-  return [...used].filter(m => !(m in MODEL_MAP)).sort();
+  return [...used].filter(m => !hasLegacyRenderer(m) && !(m in MODEL_MAP)).sort();
 }
 
 /* ---------------------------------------------------------------- scene building */
 
 const secondsFor = (text: string, min = 3, max = 9) => Math.max(min, Math.min(max, Math.round((text.length / 14 + 1.5) * 2) / 2));
 
-type SceneInit = { title: string; body: string; kind: Scene['kind']; phase: string; model?: string; narration?: string; expression?: string; legacy?: Record<string, unknown>; animation?: Scene['animation'] };
+type SceneInit = { title: string; body: string; kind: Scene['kind']; phase: string; model?: string; params?: LegacyVisual | undefined; stage?: VisualStage; narration?: string; expression?: string; legacy?: Record<string, unknown>; animation?: Scene['animation'] };
 
 function buildScenes(inits: SceneInit[]): Scene[] {
   return inits.map((s, n) => {
@@ -166,7 +167,7 @@ function buildScenes(inits: SceneInit[]): Scene[] {
     };
     if (s.expression) scene.expression = s.expression;
     if (s.narration) scene.narration = s.narration;
-    if (s.model || s.legacy) scene.legacy = { ...(s.model ? { visualModel: s.model } : {}), ...s.legacy };
+    if (s.model || s.legacy) scene.legacy = { ...(s.model ? { visualModel: s.model } : {}), ...(s.params ? { visualParams: s.params } : {}), ...(s.stage ? { visualStage: s.stage } : {}), ...s.legacy };
     return scene;
   });
 }
@@ -194,10 +195,10 @@ function projectFrom(entry: LegacyEntry, scenes: Scene[], extra: Partial<StudioP
 function mistakeScenes(b: LegacyMistake, hook: string, ch?: [string, string], vis?: LegacyVisual): SceneInit[] {
   const model = vis?.m ?? b.vis?.m;
   const out: SceneInit[] = [
-    { title: 'الخطاف', body: hook, kind: 'hook', phase: 'Hook', ...(model ? { model } : {}), expression: b.mistake },
-    { title: 'إجابة التلميذ', body: b.mistake, kind: 'explain', phase: 'Diagnosis', ...(model ? { model } : {}), expression: b.mistake },
+    { title: 'الخطاف', body: hook, kind: 'hook', phase: 'Hook', ...(model ? { model, params: vis ?? b.vis, stage: 'predict' as const } : {}), expression: b.mistake },
+    { title: 'إجابة التلميذ', body: b.mistake, kind: 'explain', phase: 'Diagnosis', ...(model ? { model, params: vis ?? b.vis, stage: 'observe' as const } : {}), expression: b.mistake },
     { title: 'السبب الحقيقي', body: b.cause, kind: 'explain', phase: 'Cause' },
-    { title: 'التصحيح', body: b.fix, kind: 'rule', phase: 'Solution', ...(model ? { model } : {}) },
+    { title: 'التصحيح', body: b.fix, kind: 'rule', phase: 'Solution', ...(model ? { model, params: vis ?? b.vis, stage: 'general' as const } : {}) },
   ];
   if (ch) {
     out.push({ title: 'تحدّي', body: ch[0], kind: 'explain', phase: 'Challenge' });
@@ -226,13 +227,13 @@ export function legacyToProject(entry: LegacyEntry): StudioProject | null {
       if (!x) return null;
       const say = x.say ?? {};
       const inits: SceneInit[] = [
-        { title: 'الخطاف', body: x.hook, kind: 'hook', phase: 'Hook', model: x.m, ...(say['p'] ? { narration: say['p'] } : {}) },
-        { title: 'خمّن', body: x.hook, kind: 'explain', phase: 'Predict', model: x.r1?.m ?? x.m, legacy: { reps: x.r1 }, ...(say['p'] ? { narration: say['p'] } : {}) },
-        { title: 'حرّك وشوف', body: x.rule, kind: 'explain', phase: 'Intuition', model: x.m, ...(say['m'] ? { narration: say['m'] } : {}) },
-        { title: 'لاحظ', body: x.rule, kind: 'explain', phase: 'Observe', model: x.m, ...(say['o'] ? { narration: say['o'] } : {}) },
+        { title: 'الخطاف', body: x.hook, kind: 'hook', phase: 'Hook', model: x.m, params: x.r1, stage: 'predict', ...(say['p'] ? { narration: say['p'] } : {}) },
+        { title: 'خمّن', body: x.hook, kind: 'explain', phase: 'Predict', model: x.r1?.m ?? x.m, params: x.r1, stage: 'predict', legacy: { reps: x.r1 }, ...(say['p'] ? { narration: say['p'] } : {}) },
+        { title: 'حرّك وشوف', body: x.rule, kind: 'explain', phase: 'Intuition', model: x.m, params: x.r1, stage: 'move', ...(say['m'] ? { narration: say['m'] } : {}) },
+        { title: 'لاحظ', body: x.rule, kind: 'explain', phase: 'Observe', model: x.m, params: x.r1, stage: 'observe', ...(say['o'] ? { narration: say['o'] } : {}) },
       ];
-      if (x.r2) inits.push({ title: 'المستوى الثاني', body: x.rule, kind: 'explain', phase: 'Predict', model: x.r2.m, legacy: { reps: x.r2 }, ...(say['p2'] ? { narration: say['p2'] } : {}) });
-      inits.push({ title: 'القاعدة', body: x.rule, kind: 'rule', phase: 'Solution', model: x.m, ...(say['g'] ? { narration: say['g'] } : {}) });
+      if (x.r2) inits.push({ title: 'المستوى الثاني', body: x.rule, kind: 'explain', phase: 'Predict', model: x.r2.m, params: x.r2, stage: 'predict', legacy: { reps: x.r2 }, ...(say['p2'] ? { narration: say['p2'] } : {}) });
+      inits.push({ title: 'القاعدة', body: x.rule, kind: 'rule', phase: 'Solution', model: x.m, params: x.r2 ?? x.r1, stage: 'general', ...(say['g'] ? { narration: say['g'] } : {}) });
       if (x.ch) { inits.push({ title: 'تحدّي', body: x.ch[0], kind: 'explain', phase: 'Challenge' }, { title: 'الجواب', body: x.ch[1], kind: 'rule', phase: 'Challenge' }); }
       inits.push({ title: 'الدعوة للعمل', body: CTA, kind: 'cta', phase: 'End card' });
       return projectFrom(entry, buildScenes(inits), { remediation: x.rule });

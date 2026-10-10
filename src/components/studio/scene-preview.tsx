@@ -3,6 +3,7 @@ import { type Scene, type StudioProject } from '@/lib/studio';
 import { phaseOf } from '@/lib/reference-project';
 import { sceneMotion } from '@/lib/project-file';
 import { evaluateMathExpression, computeSlope, generatePlotData } from '@/lib/math-engine';
+import { hasLegacyRenderer, renderLegacyVisual, type VisualParams, type VisualStage } from '@/lib/legacy-visuals';
 
 export function ScenePreview({
   project,
@@ -32,6 +33,10 @@ export function ScenePreview({
   const lineHeight = scene.lineHeight ?? 1.25;
   const textColor = scene.textColor ?? 'default';
   const visual = scene.visual ?? 'curve';
+  const legacyModel = typeof scene.legacy?.['visualModel'] === 'string' ? (scene.legacy['visualModel'] as string) : '';
+  const legacyNode = legacyModel && hasLegacyRenderer(legacyModel)
+    ? renderLegacyVisual({ model: legacyModel, params: scene.legacy?.['visualParams'] as VisualParams | undefined, stage: scene.legacy?.['visualStage'] as VisualStage | undefined, elapsed: elapsed ?? 99, duration: scene.duration })
+    : null;
   const baseTitleY = (portrait ? 218 : 120) + (scene.textY ?? 0);
   const visualY = (portrait ? 376 : 230) + (scene.visualY ?? 0);
   const visualScale = (portrait ? 1 : 0.68) * (scene.visualScale ?? 1);
@@ -333,7 +338,10 @@ export function ScenePreview({
         )}
 
         {/* Sophisticated 3Blue1Brown Math Models */}
-        {(scene.showVisual ?? true) && visual !== 'none' && (
+        {(scene.showVisual ?? true) && legacyNode && (
+          <g transform={`translate(${width / 2 - 195},${visualY - 20}) scale(${visualScale})`}>{legacyNode}</g>
+        )}
+        {(scene.showVisual ?? true) && !legacyNode && visual !== 'none' && (
           <g transform={`translate(${width / 2 - 195},${visualY}) scale(${visualScale})`}>
             {visual === 'number-line' ? (
               <g>
