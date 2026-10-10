@@ -358,59 +358,71 @@ export function renderLegacyVisual(input: LegacyVisualInput): ReactNode | null {
         strokeWidth={1.2}
       />
       {kit.els}
-      {res.readout ? (
-        <g transform={`translate(${CX}, 14)`}>
-          <rect
-            x={-160}
-            y={-18}
-            width={320}
-            height={34}
-            rx={8}
-            fill="rgba(8, 12, 20, 0.88)"
-            stroke={bad ? 'rgba(248, 113, 113, 0.85)' : 'rgba(56, 189, 248, 0.75)'}
-            strokeWidth={1.5}
-          />
-          <text
-            x={0}
-            y={5}
-            fontSize={20}
-            fontWeight={800}
-            fontFamily="Tajawal, Cairo, sans-serif"
-            textAnchor="middle"
-            fill={`rgba(${bad ? RD : WH},${al})`}
-            stroke="rgba(8,12,18,0.9)"
-            strokeWidth={3}
-            paintOrder="stroke"
-          >
-            {res.readout}
-          </text>
-        </g>
-      ) : null}
-      {res.formula && st === 'general' ? (
-        <g transform={`translate(${CX}, ${TOP + MH + 50})`}>
-          <rect
-            x={-165}
-            y={-14}
-            width={330}
-            height={28}
-            rx={6}
-            fill="rgba(8, 12, 20, 0.85)"
-            stroke="rgba(251, 191, 36, 0.75)"
-            strokeWidth={1.2}
-          />
-          <text
-            x={0}
-            y={4}
-            fontSize={13.5}
-            fontWeight={800}
-            fontFamily="Tajawal, Cairo, sans-serif"
-            textAnchor="middle"
-            fill={`rgba(${AM},${al})`}
-          >
-            {res.formula}
-          </text>
-        </g>
-      ) : null}
+      {res.readout ? (() => {
+        const textLen = res.readout.length;
+        const pillW = Math.min(344, Math.max(160, textLen * 11.5 + 32));
+        const pillFont = textLen > 24 ? 14 : textLen > 18 ? 16 : 19;
+        return (
+          <g transform={`translate(${CX}, 14)`}>
+            <rect
+              x={-pillW / 2}
+              y={-18}
+              width={pillW}
+              height={34}
+              rx={8}
+              fill="rgba(8, 12, 20, 0.88)"
+              stroke={bad ? 'rgba(248, 113, 113, 0.85)' : 'rgba(56, 189, 248, 0.75)'}
+              strokeWidth={1.5}
+            />
+            <text
+              x={0}
+              y={5}
+              fontSize={pillFont}
+              fontWeight={800}
+              fontFamily="Tajawal, Cairo, sans-serif"
+              textAnchor="middle"
+              fill={`rgba(${bad ? RD : WH},${al})`}
+              stroke="rgba(8,12,18,0.9)"
+              strokeWidth={3}
+              paintOrder="stroke"
+              dir="auto"
+            >
+              {res.readout}
+            </text>
+          </g>
+        );
+      })() : null}
+      {res.formula && st === 'general' ? (() => {
+        const formulaLen = res.formula.length;
+        const pillW = Math.min(348, Math.max(180, formulaLen * 8.2 + 28));
+        const formulaFont = formulaLen > 36 ? 11 : formulaLen > 28 ? 12.5 : 13.5;
+        return (
+          <g transform={`translate(${CX}, ${TOP + MH + 50})`}>
+            <rect
+              x={-pillW / 2}
+              y={-14}
+              width={pillW}
+              height={28}
+              rx={6}
+              fill="rgba(8, 12, 20, 0.85)"
+              stroke="rgba(251, 191, 36, 0.75)"
+              strokeWidth={1.2}
+            />
+            <text
+              x={0}
+              y={4}
+              fontSize={formulaFont}
+              fontWeight={800}
+              fontFamily="Tajawal, Cairo, sans-serif"
+              textAnchor="middle"
+              fill={`rgba(${AM},${al})`}
+              dir="auto"
+            >
+              {res.formula}
+            </text>
+          </g>
+        );
+      })() : null}
     </g>
   );
 }

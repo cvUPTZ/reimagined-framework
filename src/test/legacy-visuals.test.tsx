@@ -63,4 +63,17 @@ describe('legacy visual renderers', () => {
     expect(ctaHtml).toContain('@MathZyno_bot');
     expect(ctaHtml).toContain('امسح الكود');
   });
+
+  it('intelligently wraps long Arabic sentences into multiple lines without truncation', () => {
+    const entry = listLegacy('intuition')[1]!; // intuition-1 with long hook
+    const project = legacyToProject(entry)!;
+    const hookScene = project.scenes[0]!;
+    const html = renderToStaticMarkup(createElement(ScenePreview, { project, scene: hookScene }));
+    
+    // Check that tspan elements are created for multiple wrapped lines
+    const tspanCount = (html.match(/<tspan[^>]*dir="auto"[^>]*>/g) || []).length;
+    expect(tspanCount).toBeGreaterThanOrEqual(2);
+    expect(html).toContain('3 مجموعات، كل وحدة فيها 2');
+    expect(html).toContain('فيروزي: شحال في الكل؟ 🧮');
+  });
 });

@@ -6,6 +6,40 @@ import { evaluateMathExpression, computeSlope, generatePlotData } from '@/lib/ma
 import { hasLegacyRenderer, renderLegacyVisual, type VisualParams, type VisualStage } from '@/lib/legacy-visuals';
 import { TELEGRAM_QR_SRC, TELEGRAM_BOT_HANDLE, TELEGRAM_BOT_URL } from '@/assets/telegram-qr';
 
+/**
+ * Intelligent text-wrapping helper that respects word boundaries, punctuation,
+ * and maximum line length for Arabic and multilingual typography.
+ */
+export function wrapSceneText(text: string, maxChars = 32): string[] {
+  if (!text) return [];
+  const rawLines = text.split('\n');
+  const result: string[] = [];
+
+  for (const rawLine of rawLines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) continue;
+    if (trimmed.length <= maxChars) {
+      result.push(trimmed);
+      continue;
+    }
+
+    const words = trimmed.split(/\s+/);
+    let cur = '';
+    for (const w of words) {
+      if (!cur) {
+        cur = w;
+      } else if ((cur + ' ' + w).length <= maxChars) {
+        cur += ' ' + w;
+      } else {
+        result.push(cur);
+        cur = w;
+      }
+    }
+    if (cur) result.push(cur);
+  }
+  return result;
+}
+
 export function ScenePreview({
   project,
   scene,
@@ -25,17 +59,47 @@ export function ScenePreview({
   const portrait = project.format === 'portrait';
   const width = portrait ? 540 : 960;
   const height = portrait ? 960 : 540;
-  const lines = scene.body.split('\n');
   const isArabic = /[\u0600-\u06ff]/.test(scene.body) || /[\u0600-\u06ff]/.test(scene.title);
-  const fontSize = scene.fontSize ?? 42;
+
+  // Responsive font sizing & intelligent multi-line wrapping:
+  // prevents wide sentences from overflowing the canvas bounds or truncating.
+  const baseSize = scene.fontSize ?? 42;
+  const bodyLen = scene.body?.trim().length ?? 0;
+  const maxLineLen = Math.max(...(scene.body || '').split('\n').map(l => l.trim().length), 0);
+
+  // Scale down font size smoothly if text is long or single line is wide
+  const fontSize = portrait
+    ? (maxLineLen > 48 || bodyLen > 75)
+      ? Math.min(baseSize, 28)
+      : (maxLineLen > 32 || bodyLen > 45)
+        ? Math.min(baseSize, 33)
+        : baseSize
+    : (maxLineLen > 65 || bodyLen > 90)
+      ? Math.min(baseSize, 30)
+      : baseSize;
+
+  const maxCharsPerLine = portrait
+    ? fontSize <= 30 ? 36 : fontSize <= 35 ? 30 : 25
+    : fontSize <= 30 ? 55 : 44;
+
+  const lines = useMemo(() => wrapSceneText(scene.body, maxCharsPerLine), [scene.body, maxCharsPerLine]);
+
   const fontFamily = scene.fontFamily ?? (isArabic ? 'Tajawal' : 'Space Grotesk');
   const fontWeight = scene.fontWeight ?? 600;
   const textAlign = scene.textAlign ?? 'center';
   const lineHeight = scene.lineHeight ?? 1.25;
   const textColor = scene.textColor ?? 'default';
   const visual = scene.visual ?? 'curve';
-  const baseTitleY = (portrait ? 218 : 120) + (scene.textY ?? 0);
-  const visualY = (portrait ? 376 : 230) + (scene.visualY ?? 0);
+
+  // Dynamic vertical layout: when lines increase, push title slightly up and visual card down
+  // ensuring zero overlap between Arabic title text and visual intuition cards
+  const textLineCount = lines.length || 1;
+  const extraLines = Math.max(0, textLineCount - 2);
+  const titleOffset = extraLines * (fontSize * 0.4);
+  const visualPush = extraLines * (fontSize * 0.9);
+
+  const baseTitleY = (portrait ? 218 : 120) + (scene.textY ?? 0) - (portrait ? titleOffset : 0);
+  const visualY = (portrait ? 376 : 230) + (scene.visualY ?? 0) + (portrait ? visualPush : 0);
   const visualScale = (portrait ? 1 : 0.68) * (scene.visualScale ?? 1);
   const expressionY = (portrait ? 795 : 485) + (scene.expressionY ?? 0);
   const textX = textAlign === 'center' ? width / 2 : textAlign === 'left' ? (portrait ? 36 : 48) : width - (portrait ? 36 : 48);
@@ -327,11 +391,11 @@ export function ScenePreview({
             fontWeight={fontWeight}
             fontFamily={fontFamily}
             className={`art-title ${textColor !== 'default' ? `art-text-${textColor}` : ''}`}
-            style={{ fontFamily: `${fontFamily}, sans-serif`, fontWeight }}
+            style={{ fontFamily: `${fontFamily}, sans-serif`, fontWeight, unicodeBidi: 'plaintext' }}
             direction={isArabic ? 'rtl' : 'ltr'}
           >
-            {lines.slice(0, 4).map((line, i) => (
-              <tspan key={i} x={textX} dy={i ? fontSize * lineHeight : 0}>
+            {lines.slice(0, 5).map((line, i) => (
+              <tspan key={i} x={textX} dy={i ? fontSize * lineHeight : 0} textAnchor={textAnchor} dir="auto">
                 {line}
               </tspan>
             ))}
