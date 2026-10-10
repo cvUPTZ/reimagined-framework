@@ -14,6 +14,7 @@ export interface Scene {
   visual?: "curve" | "tangent" | "none";
   narration?: string;
   expression?: string;
+  legacy?: Record<string, unknown>;
 }
 
 export interface StudioProject {
@@ -27,6 +28,8 @@ export interface StudioProject {
   remediation: string;
   cta: string;
   scenes: Scene[];
+  legacy?: Record<string, unknown>;
+  mediaName?: string;
 }
 
 export const makeId = () => Math.random().toString(36).slice(2, 10);
