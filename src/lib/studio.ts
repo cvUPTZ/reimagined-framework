@@ -8,6 +8,12 @@ export interface Scene {
   body: string;
   duration: number;
   kind: "hook" | "explain" | "rule" | "cta";
+  phase?: string;
+  animation?: "Draw in" | "Fade" | "Slide up" | "None";
+  fontSize?: number;
+  visual?: "curve" | "tangent" | "none";
+  narration?: string;
+  expression?: string;
 }
 
 export interface StudioProject {

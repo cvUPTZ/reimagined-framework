@@ -10,3 +10,6 @@
 <!-- LOVABLE:END -->
 
 - Keep editor state in typed project objects and pure transformation helpers so preview, persistence, and export share one data model.
+
+- Reference demo scenes live separately from the original project defaults; optional scene presentation fields preserve existing saved project compatibility.
+- Render scene artwork through the shared ScenePreview component so sidebar thumbnails and the main canvas always display the same project content.
