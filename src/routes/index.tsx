@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { AudioLines, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clapperboard, Copy, Download, Expand, Eye, EyeOff, Film, FolderOpen, Layers, LayoutTemplate, MoreHorizontal, Pause, Play, Plus, Redo2, RotateCcw, Search, Settings2, ShieldCheck, SkipBack, SlidersHorizontal, Sparkles, Trash2, Type, Undo2, Upload, Volume2, VolumeX, X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { AudioLines, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clapperboard, Copy, Download, Expand, Eye, EyeOff, FilePlus, Film, FolderOpen, History, Layers, LayoutTemplate, Mic, MicOff, MoreHorizontal, Palette, Pause, Play, Plus, Redo2, RotateCcw, Search, Settings2, ShieldCheck, SkipBack, SlidersHorizontal, Sparkles, Trash2, Type, Undo2, Upload, Volume2, VolumeX, X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -8,10 +8,12 @@ import { ExportPanel } from '@/components/studio/export-panel';
 import { TimelineEditor } from '@/components/studio/timeline-editor';
 import { sceneStart, trimScene } from '@/lib/timeline';
 import { parseProjectFile, projectFile, sceneAtTime } from '@/lib/project-file';
-import { buildScenes, duplicateScene, moveScene, totalDuration, type Scene, type StudioProject } from '@/lib/studio';
+import { buildScenes, defaultBrandKits, duplicateScene, moveScene, totalDuration, type Scene, type StudioProject } from '@/lib/studio';
 import { phaseNames, phaseOf, phaseClass, referenceProject, timecode } from '@/lib/reference-project';
 import { evaluateMathExpression } from '@/lib/math-engine';
 import { lessonToStudioProject, searchEducationalLessons } from '@/lib/educational-library';
+import { listProjects, getProject, saveProject as persistProject, deleteProject as removeStoredProject, duplicateProject as cloneStoredProject, searchProjects, listSnapshots, createSnapshot, type ProjectMeta, type ProjectSnapshot } from '@/lib/project-store';
+import { VoiceRecorder, isRecordingSupported } from '@/lib/audio-recording';
 
 export const Route = createFileRoute('/')({
   head: () => ({ meta: [
@@ -48,6 +50,12 @@ function Studio() {
   const [librarySearch, setLibrarySearch] = useState('');
   const [libraryLevel, setLibraryLevel] = useState('all');
   const [customBuilderOpen, setCustomBuilderOpen] = useState(false);
+  const [projectSearch, setProjectSearch] = useState('');
+  const [projectList, setProjectList] = useState<ProjectMeta[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recorderRef = useRef<VoiceRecorder | null>(null);
+  const recordTimerRef = useRef<number | null>(null);
   const lastEdit = useRef({ key: '', at: 0 });
   const file = useRef<HTMLInputElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -56,11 +64,65 @@ function Studio() {
   const scene = project.scenes[selected] ?? project.scenes[0];
   const filteredLessons = useMemo(() => searchEducationalLessons(librarySearch, libraryLevel), [librarySearch, libraryLevel]);
   const formulaValidation = useMemo(() => evaluateMathExpression(scene?.expression ?? project.expression ?? '', 1), [scene?.expression, project.expression]);
+
+  useEffect(() => {
+    setProjectList(searchProjects(projectSearch));
+  }, [panel, projectSearch, project]);
+
+  useEffect(() => {
+    return () => {
+      if (recorderRef.current) recorderRef.current.cancel();
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     try { const raw = localStorage.getItem('qed-studio-project-v1'); if (raw) { const result = parseProjectFile(JSON.parse(raw)); setProject(result.project); setImportWarnings(result.warnings); } } catch { setNotice('Your saved project could not be opened. Import a backup to recover it.'); }
     setHydrated(true);
   }, []);
-  useEffect(() => { if (!hydrated) return; setSaved(false); const timer = setTimeout(() => { try { localStorage.setItem('qed-studio-project-v1', JSON.stringify(project)); setSaved(true); } catch { setNotice('Browser storage is full. Download your project to save it.'); } }, 450); return () => clearTimeout(timer); }, [project, hydrated]);
+  useEffect(() => { if (!hydrated) return; setSaved(false); const timer = setTimeout(() => { try { persistProject(project); setSaved(true); } catch { setNotice('Browser storage is full. Download your project to save it.'); } }, 450); return () => clearTimeout(timer); }, [project, hydrated]);
+
+  async function toggleRecording() {
+    if (isRecording) {
+      if (!recorderRef.current) return;
+      try {
+        const result = await recorderRef.current.stop();
+        setIsRecording(false);
+        if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+        setAudioUrl(result.url);
+        const recName = `Voice-over ${new Date().toLocaleTimeString()}.webm`;
+        setAudioName(recName);
+        commit({
+          ...project,
+          mediaName: recName,
+          audioTrack: {
+            name: recName,
+            url: result.url,
+            volume,
+            muted: false,
+            startOffset: project.audioTrack?.startOffset ?? 0,
+          },
+        });
+        setNotice('Voice-over recorded and attached!');
+      } catch {
+        setIsRecording(false);
+        setNotice('Recording stopped with error.');
+      }
+    } else {
+      try {
+        const rec = new VoiceRecorder();
+        await rec.start();
+        recorderRef.current = rec;
+        setIsRecording(true);
+        setRecordingSeconds(0);
+        recordTimerRef.current = window.setInterval(() => {
+          setRecordingSeconds(s => s + 1);
+        }, 1000);
+      } catch (e) {
+        setNotice(e instanceof Error ? e.message : 'Microphone access denied or unavailable.');
+      }
+    }
+  }
   useEffect(() => {
     if (!playing) return;
     let frame = 0;

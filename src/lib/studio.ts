@@ -41,6 +41,61 @@ export interface Scene {
   legacy?: Record<string, unknown>;
 }
 
+export interface BrandKit {
+  name: string;
+  brandName: string;
+  tagline: string;
+  footnote: string;
+  accentColor: string;
+  logoStyle?: 'square' | 'circle' | 'minimal';
+}
+
+export interface AudioTrackConfig {
+  name: string;
+  url?: string;
+  volume: number;
+  muted: boolean;
+  startOffset?: number;
+  fadeIn?: number;
+  fadeOut?: number;
+  ducking?: boolean;
+}
+
+export const defaultBrandKits: Record<string, BrandKit> = {
+  qed: {
+    name: 'QED Classic',
+    brandName: 'QED',
+    tagline: 'A LITTLE CLARITY. A BIG DIFFERENCE.',
+    footnote: 'MOMENTS OF UNDERSTANDING',
+    accentColor: 'oklch(0.845 0.135 153)',
+    logoStyle: 'square',
+  },
+  bac: {
+    name: 'BAC Excellence',
+    brandName: 'BAC 2026',
+    tagline: 'DIPLOMA WITH DISTINCTION',
+    footnote: 'EXCELLENCE IN MATHEMATICS',
+    accentColor: 'oklch(0.83 0.14 95)',
+    logoStyle: 'square',
+  },
+  cinematic: {
+    name: 'Cinematic Math',
+    brandName: 'CM',
+    tagline: 'VISUAL RIGOR & INTUITION',
+    footnote: 'UNDERSTANDING DEEPENS',
+    accentColor: 'oklch(0.73 0.13 260)',
+    logoStyle: 'circle',
+  },
+  minimal: {
+    name: 'Pure Logic',
+    brandName: 'MATH',
+    tagline: 'ESSENTIAL CONCEPTS',
+    footnote: 'STEP BY STEP CLARITY',
+    accentColor: 'oklch(0.72 0.17 30)',
+    logoStyle: 'minimal',
+  },
+};
+
 export interface StudioProject {
   id: string;
   name: string;
@@ -54,6 +109,9 @@ export interface StudioProject {
   scenes: Scene[];
   legacy?: Record<string, unknown>;
   mediaName?: string;
+  brandKit?: BrandKit;
+  audioTrack?: AudioTrackConfig;
+  updatedAt?: string;
 }
 
 export const makeId = () => Math.random().toString(36).slice(2, 10);

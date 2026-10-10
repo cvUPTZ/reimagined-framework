@@ -29,11 +29,24 @@ const sceneSchema = z.object({
   narration: z.string().optional(),
   legacy: z.record(z.unknown()).optional(),
 });
+const brandKitSchema = z.object({
+  name: z.string(), brandName: z.string(), tagline: z.string(), footnote: z.string(),
+  accentColor: z.string(), logoStyle: z.enum(['square', 'circle', 'minimal']).optional(),
+}).optional();
+
+const audioTrackSchema = z.object({
+  name: z.string(), url: z.string().optional(), volume: z.number().min(0).max(100),
+  muted: z.boolean(), startOffset: z.number().finite().optional(),
+  fadeIn: z.number().finite().optional(), fadeOut: z.number().finite().optional(),
+  ducking: z.boolean().optional(),
+}).optional();
+
 const projectSchema = z.object({
   id: z.string().min(1), name: z.string(), format: z.enum(['portrait', 'landscape']),
   topic: z.string(), level: z.string(), mistake: z.string(), expression: z.string(),
   remediation: z.string(), cta: z.string(), scenes: z.array(sceneSchema).min(1),
   legacy: z.record(z.unknown()).optional(), mediaName: z.string().optional(),
+  brandKit: brandKitSchema, audioTrack: audioTrackSchema, updatedAt: z.string().optional(),
 });
 const legacySceneSchema = z.object({ dur: z.number().positive().finite(), txt: z.string().optional(),
   texts: z.array(z.object({ t: z.string() }).passthrough()).optional(), say: z.string().optional(),
@@ -69,6 +82,9 @@ export function parseProjectFile(input: unknown): { project: StudioProject; warn
     mistake: parsed.mistake, expression: parsed.expression, remediation: parsed.remediation, cta: parsed.cta,
     ...(parsed.legacy === undefined ? {} : { legacy: parsed.legacy }),
     ...(parsed.mediaName === undefined ? {} : { mediaName: parsed.mediaName }),
+    ...(parsed.brandKit === undefined ? {} : { brandKit: parsed.brandKit }),
+    ...(parsed.audioTrack === undefined ? {} : { audioTrack: parsed.audioTrack }),
+    ...(parsed.updatedAt === undefined ? {} : { updatedAt: parsed.updatedAt }),
     scenes: parsed.scenes.map(s => ({
       id: s.id, title: s.title, label: s.label, body: s.body, duration: s.duration, kind: s.kind,
       ...(s.phase === undefined ? {} : { phase: s.phase }),

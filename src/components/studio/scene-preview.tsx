@@ -24,6 +24,11 @@ export function ScenePreview({ project, scene, safeZones = false, miniature = fa
   const textAnchor = textAlign === 'center' ? 'middle' : textAlign === 'left' ? 'start' : 'end';
   const motion = sceneMotion(scene, elapsed);
   const wipeWidth = Math.max(0, Math.min(width, width * motion.wipeProgress));
+  const brandName = project.brandKit?.brandName ?? 'QED';
+  const tagline = project.brandKit?.tagline ?? 'A LITTLE CLARITY. A BIG DIFFERENCE.';
+  const footnote = project.brandKit?.footnote ?? 'MOMENTS OF UNDERSTANDING';
+  const accentColor = project.brandKit?.accentColor;
+  const logoSymbol = project.brandKit?.logoStyle === 'circle' ? '●' : project.brandKit?.logoStyle === 'minimal' ? '' : '∎';
 
   return <svg xmlns="http://www.w3.org/2000/svg" className={`scene-art ${miniature ? 'miniature-art' : ''}`} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={miniature ? scene.title : 'Math video preview'}>
     <defs>
@@ -33,8 +38,8 @@ export function ScenePreview({ project, scene, safeZones = false, miniature = fa
     <rect width={width} height={height} className="art-background"/>
     {(scene.showGrid ?? true) && <rect width={width} height={height} fill={`url(#grid-${id})`}/>}
     {(scene.showBrand ?? true) && <>
-      <text x="34" y="48" className="art-brand">QED <tspan className="art-accent">∎</tspan></text>
-      <text x={width - 34} y="44" textAnchor="end" className="art-tagline">A LITTLE CLARITY. A BIG DIFFERENCE.</text>
+      <text x="34" y="48" className="art-brand">{brandName} {logoSymbol && <tspan className="art-accent" style={accentColor ? { fill: accentColor } : {}}>{logoSymbol}</tspan>}</text>
+      <text x={width - 34} y="44" textAnchor="end" className="art-tagline">{tagline}</text>
     </>}
     <g className="art-content" opacity={motion.opacity} transform={`translate(${motion.offsetX} ${motion.offsetY}) scale(${motion.scale})`} style={{ transformOrigin: `${width / 2}px ${height / 2}px` }} {...(motion.wipeProgress < 1 ? { clipPath: `url(#wipe-${id})` } : {})}>
       {(scene.showPhase ?? true) && <text x={textX} y={baseTitleY - 48} textAnchor={textAnchor} className="art-phase">{phaseOf(scene).toUpperCase()}</text>}
@@ -79,7 +84,7 @@ export function ScenePreview({ project, scene, safeZones = false, miniature = fa
     </g>
     {safeZones && <rect x={width * .08} y={height * .07} width={width * .84} height={height * .81} className="art-safe"/>}
     {(scene.showFootnote ?? true) && <>
-      <text x="34" y={height - 30} className="art-footnote">MOMENTS OF UNDERSTANDING</text>
+      <text x="34" y={height - 30} className="art-footnote">{footnote}</text>
       <text x={width - 34} y={height - 30} textAnchor="end" className="art-footnote">{scene.label} / {String(project.scenes.length).padStart(2, '0')}</text>
     </>}
   </svg>;
