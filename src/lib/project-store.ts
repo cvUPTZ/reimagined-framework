@@ -25,14 +25,14 @@ const INDEX_KEY = 'qed-studio-projects-index-v1';
 const DATA_PREFIX = 'qed-studio-project-data:';
 const SNAPSHOT_PREFIX = 'qed-studio-snapshots:';
 
-function getStoredIndex(): ProjectMeta[] {
+function getStoredIndex(): ProjectMeta[] | null {
   try {
     const raw = localStorage.getItem(INDEX_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw !== null) return JSON.parse(raw);
   } catch {
     // Ignore read errors
   }
-  return [];
+  return null;
 }
 
 function setStoredIndex(index: ProjectMeta[]) {
@@ -45,9 +45,8 @@ function setStoredIndex(index: ProjectMeta[]) {
 
 export function listProjects(): ProjectMeta[] {
   const index = getStoredIndex();
-  if (index.length === 0) {
+  if (index === null) {
     // Seed with reference project and current project if available
-    const initialList: ProjectMeta[] = [];
     try {
       const currentRaw = localStorage.getItem('qed-studio-project-v1');
       if (currentRaw) {
@@ -59,7 +58,7 @@ export function listProjects(): ProjectMeta[] {
     }
     // Also save reference demo
     saveProject(referenceProject, false);
-    return getStoredIndex();
+    return (getStoredIndex() ?? []).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
   return index.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
@@ -92,7 +91,7 @@ export function saveProject(project: StudioProject, createAutoSnapshot = true): 
     // Storage may be full
   }
 
-  const index = getStoredIndex().filter(p => p.id !== project.id);
+  const index = (getStoredIndex() ?? []).filter(p => p.id !== project.id);
   const meta: ProjectMeta = {
     id: project.id,
     name: project.name || 'Untitled project',
@@ -115,10 +114,21 @@ export function deleteProject(id: string): boolean {
   try {
     localStorage.removeItem(`${DATA_PREFIX}${id}`);
     localStorage.removeItem(`${SNAPSHOT_PREFIX}${id}`);
+    const currentRaw = localStorage.getItem('qed-studio-project-v1');
+    if (currentRaw) {
+      try {
+        const parsed = parseProjectFile(JSON.parse(currentRaw));
+        if (parsed.project.id === id) {
+          localStorage.setItem('qed-studio-project-v1', JSON.stringify(projectFile(referenceProject)));
+        }
+      } catch {
+        // Ignore
+      }
+    }
   } catch {
     // Ignore
   }
-  const index = getStoredIndex().filter(p => p.id !== id);
+  const index = (getStoredIndex() ?? []).filter(p => p.id !== id);
   setStoredIndex(index);
   return true;
 }

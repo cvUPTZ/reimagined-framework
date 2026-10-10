@@ -54,6 +54,8 @@ function Studio() {
   const [projectList, setProjectList] = useState<ProjectMeta[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [showSnapshots, setShowSnapshots] = useState(false);
+  const [snapshots, setSnapshots] = useState<ProjectSnapshot[]>([]);
   const recorderRef = useRef<VoiceRecorder | null>(null);
   const recordTimerRef = useRef<number | null>(null);
   const lastEdit = useRef({ key: '', at: 0 });
@@ -240,7 +242,149 @@ function Studio() {
     </div>
     <input ref={file} type="file" accept=".json,.cmb.json,.qed.json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void importFile(f); e.target.value = ''; }}/>{audioUrl && <audio ref={audio} src={audioUrl}/>}
     <Dialog open={panel !== null} onOpenChange={open => { if (!open) setPanel(null); }}><DialogContent className="studio-modal"><span className="overline">QED STUDIO</span><DialogTitle>{panel ? { projects: 'Your projects', templates: 'Start with a story', library: 'Story & lesson', audio: 'Audio studio', settings: 'Studio settings', export: 'Ready for the world' }[panel] : ''}</DialogTitle><DialogDescription className="sr-only">{panel} options</DialogDescription>
-      {panel === 'projects' && <div className="modal-content"><Button variant="outline" onClick={() => file.current?.click()}><Upload size={16}/>Import project</Button><Button variant="outline" onClick={exportProject}><Download size={16}/>Save project file</Button><Button variant="secondary" className="project-option" onClick={() => load(referenceProject)}><Clapperboard size={18}/>The derivative, made visual<ChevronRight size={16}/></Button></div>}
+      {panel === 'projects' && <div className="modal-content">
+        <div className="library-search">
+          <div style={{ position: 'relative' }}>
+            <input
+              placeholder="Search saved projects by name, topic, or level…"
+              value={projectSearch}
+              onChange={e => setProjectSearch(e.target.value)}
+              style={{ paddingLeft: 30 }}
+            />
+            <Search size={14} style={{ position: 'absolute', left: 10, top: 12, color: 'var(--muted-foreground)' }}/>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button size="sm" onClick={() => {
+            const newProject: StudioProject = {
+              ...referenceProject,
+              id: `project-${crypto.randomUUID()}`,
+              name: 'New Mathematics Story',
+              scenes: [{
+                id: crypto.randomUUID(),
+                label: '01',
+                title: 'Introduction',
+                body: 'Start your lesson intuition here.',
+                duration: 5,
+                kind: 'explain',
+                phase: 'Intuition',
+                animation: 'Fade',
+                visual: 'curve',
+                fontSize: 42,
+              }],
+            };
+            load(newProject);
+            persistProject(newProject);
+            setProjectList(searchProjects(projectSearch));
+            setNotice('New project created');
+          }}>
+            <FilePlus size={15}/>New Project
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => file.current?.click()}>
+            <Upload size={15}/>Import
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportProject}>
+            <Download size={15}/>Export File
+          </Button>
+        </div>
+        <div className="project-list-grid">
+          {projectList.map(meta => (
+            <div key={meta.id} className={`project-card ${meta.id === project.id ? 'active-project' : ''}`}>
+              <div className="project-card-info">
+                <strong>
+                  {meta.name}
+                  {meta.id === project.id && <span style={{ marginLeft: 8, fontSize: 9, padding: '2px 6px', borderRadius: 3, background: 'var(--primary)', color: 'var(--primary-foreground)' }}>Current</span>}
+                </strong>
+                <small>
+                  <span>{meta.format === 'portrait' ? '9:16' : '16:9'}</span>
+                  <span>·</span>
+                  <span>{meta.sceneCount} scenes</span>
+                  <span>·</span>
+                  <span>{timecode(meta.duration)}</span>
+                  <span>·</span>
+                  <span>{new Date(meta.updatedAt).toLocaleDateString()}</span>
+                </small>
+              </div>
+              <div className="project-card-actions">
+                {meta.id !== project.id && (
+                  <Button size="sm" variant="outline" onClick={() => {
+                    const loaded = getProject(meta.id);
+                    if (loaded) {
+                      load(loaded);
+                      setNotice(`Loaded project: ${loaded.name}`);
+                    }
+                  }}>
+                    Open
+                  </Button>
+                )}
+                <IconButton icon={Copy} label="Duplicate project" onClick={() => {
+                  cloneStoredProject(meta.id);
+                  setProjectList(searchProjects(projectSearch));
+                  setNotice('Project duplicated');
+                }}/>
+                <IconButton icon={Trash2} label="Delete project" disabled={projectList.length <= 1} onClick={() => {
+                  if (window.confirm(`Delete project "${meta.name}"?`)) {
+                    removeStoredProject(meta.id);
+                    setProjectList(searchProjects(projectSearch));
+                    setNotice('Project deleted');
+                  }
+                }}/>
+              </div>
+            </div>
+          ))}
+          {projectList.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--muted-foreground)', fontSize: 12 }}>
+              No matching projects found.
+            </div>
+          )}
+        </div>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+          <Button variant="secondary" className="project-option w-full" onClick={() => {
+            load(referenceProject);
+            persistProject(referenceProject);
+            setNotice('Loaded reference demo');
+          }}>
+            <Clapperboard size={18}/>The derivative, made visual (Reference Demo)<ChevronRight size={16}/>
+          </Button>
+        </div>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600 }}>Snapshots & Recovery</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Button size="sm" variant="ghost" onClick={() => {
+                createSnapshot(project);
+                setSnapshots(listSnapshots(project.id));
+                setNotice('Recovery snapshot created');
+              }}>
+                <History size={13}/>Snapshot Now
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => {
+                setSnapshots(listSnapshots(project.id));
+                setShowSnapshots(s => !s);
+              }}>
+                {showSnapshots ? 'Hide' : 'View history'}
+              </Button>
+            </div>
+          </div>
+          {showSnapshots && (
+            <div style={{ display: 'grid', gap: 6, marginTop: 8, maxHeight: 120, overflowY: 'auto' }}>
+              {snapshots.length === 0 ? (
+                <small style={{ color: 'var(--muted-foreground)' }}>No snapshots saved for this project yet.</small>
+              ) : snapshots.map(snap => (
+                <div key={snap.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, padding: '4px 8px', background: 'var(--background)', borderRadius: 4, border: '1px solid var(--border)' }}>
+                  <span>{snap.name} · <small style={{ color: 'var(--muted-foreground)' }}>{new Date(snap.timestamp).toLocaleTimeString()}</small></span>
+                  <Button size="sm" variant="outline" style={{ height: 22, fontSize: 10 }} onClick={() => {
+                    load(snap.project);
+                    setNotice(`Restored snapshot from ${new Date(snap.timestamp).toLocaleTimeString()}`);
+                  }}>
+                    Restore
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>}
       {panel === 'templates' && <div className="template-grid">{([{ title: 'Visual intuition', type: 'curve' }, { title: 'Tangent & slope', type: 'tangent' }, { title: 'Blank canvas', type: 'none' }] as const).map(t => <Button key={t.title} variant="outline" className="template-card" onClick={() => load({ ...referenceProject, id: crypto.randomUUID(), name: t.title, scenes: t.type === 'none' ? [{ ...referenceProject.scenes[0], id: crypto.randomUUID(), title: 'Untitled scene', body: 'Your story starts here.', expression: '', visual: 'none' } as Scene] : referenceProject.scenes.map(s => ({ ...s, visual: t.type })) })}><div className="template-art">{t.type === 'none' ? <Plus size={30}/> : <svg viewBox="0 0 160 90"><path d="M10 65H150M80 10V85" className="art-axis"/><path d="M30 15Q80 115 130 15" className="art-curve" fill="none"/>{t.type === 'tangent' && <path d="M20 30L125 85" className="art-tangent"/>}</svg>}</div><strong>{t.title}</strong></Button>)}</div>}
       {panel === 'library' && <div className="modal-content">
         <div className="library-search">
@@ -314,8 +458,221 @@ function Studio() {
           )}
         </div>
       </div>}
-      {panel === 'audio' && <div className="modal-content"><label className="audio-upload"><AudioLines size={32}/><strong>{audioName || (project.mediaName ? `Reattach ${project.mediaName}` : 'Add a voice-over or music track')}</strong><input type="file" accept="audio/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; setAudioUrl(URL.createObjectURL(f)); setAudioName(f.name); commit({ ...project, mediaName: f.name }); setMuted(false); }}/></label><Field label="Volume" extra={`${volume}%`}><input type="range" min="0" max="100" value={volume} onChange={e => setVolume(Number(e.target.value))}/></Field><Button variant="outline" onClick={() => setMuted(m => !m)}>{muted ? <VolumeX size={16}/> : <Volume2 size={16}/>} {muted ? 'Enable audio' : 'Mute audio'}</Button></div>}
-      {panel === 'settings' && <div className="modal-content"><Field label="Video format"><select value={project.format} onChange={e => commit({ ...project, format: e.target.value as StudioProject['format'] })}><option value="portrait">9:16 · Portrait</option><option value="landscape">16:9 · Landscape</option></select></Field><Button variant="outline" onClick={() => setSafeZones(v => !v)}><ShieldCheck size={16}/>{safeZones ? 'Hide safe zones' : 'Show safe zones'}</Button></div>}
+      {panel === 'audio' && <div className="modal-content">
+        <div style={{ display: 'grid', gap: 10, padding: 14, background: 'var(--background)', borderRadius: 6, border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <strong style={{ fontSize: 12, display: 'block' }}>Microphone Voice-Over</strong>
+              <small style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>Record live narration directly in browser</small>
+            </div>
+            {isRecording ? (
+              <Button variant="destructive" size="sm" onClick={toggleRecording}>
+                <span className="record-pulse" style={{ marginRight: 6 }}/>
+                Stop ({recordingSeconds}s)
+              </Button>
+            ) : (
+              <Button variant="secondary" size="sm" onClick={toggleRecording}>
+                <Mic size={14}/>Record Narration
+              </Button>
+            )}
+          </div>
+          {isRecording && (
+            <div style={{ fontSize: 11, color: 'var(--destructive)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="record-pulse"/> Recording live microphone audio… Speak clearly.
+            </div>
+          )}
+        </div>
+        <label className="audio-upload">
+          <AudioLines size={32}/>
+          <strong>{audioName || (project.mediaName ? `Reattach ${project.mediaName}` : 'Upload audio file (.mp3, .wav, .webm)')}</strong>
+          <input type="file" accept="audio/*" onChange={e => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            const url = URL.createObjectURL(f);
+            setAudioUrl(url);
+            setAudioName(f.name);
+            commit({
+              ...project,
+              mediaName: f.name,
+              audioTrack: {
+                name: f.name,
+                url,
+                volume,
+                muted: false,
+                startOffset: project.audioTrack?.startOffset ?? 0,
+                ducking: project.audioTrack?.ducking ?? false,
+              },
+            });
+            setMuted(false);
+          }}/>
+        </label>
+        <Field label="Volume" extra={`${volume}%`}>
+          <input type="range" min="0" max="100" value={volume} onChange={e => {
+            const v = Number(e.target.value);
+            setVolume(v);
+            if (project.audioTrack) commit({ ...project, audioTrack: { ...project.audioTrack, volume: v } });
+          }}/>
+        </Field>
+        <Field label="Start audio offset" extra={`${(project.audioTrack?.startOffset ?? 0).toFixed(1)}s`}>
+          <input
+            type="range"
+            min="0"
+            max="10"
+            step="0.1"
+            value={project.audioTrack?.startOffset ?? 0}
+            onChange={e => {
+              const off = Number(e.target.value);
+              commit({
+                ...project,
+                audioTrack: {
+                  name: audioName || project.mediaName || 'Audio track',
+                  volume,
+                  muted,
+                  ...project.audioTrack,
+                  startOffset: off,
+                },
+              });
+            }}
+          />
+        </Field>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <strong style={{ fontSize: 12, display: 'block' }}>Audio Ducking</strong>
+            <small style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>Lower background audio level during voice speech</small>
+          </div>
+          <Button
+            variant={project.audioTrack?.ducking ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => {
+              const duck = !(project.audioTrack?.ducking ?? false);
+              commit({
+                ...project,
+                audioTrack: {
+                  name: audioName || project.mediaName || 'Audio track',
+                  volume,
+                  muted,
+                  ...project.audioTrack,
+                  ducking: duck,
+                },
+              });
+            }}
+          >
+            {project.audioTrack?.ducking ? 'Ducking ON' : 'Ducking OFF'}
+          </Button>
+        </div>
+        <Button variant="outline" onClick={() => setMuted(m => !m)}>
+          {muted ? <VolumeX size={16}/> : <Volume2 size={16}/>} {muted ? 'Enable audio' : 'Mute audio'}
+        </Button>
+      </div>}
+      {panel === 'settings' && <div className="modal-content">
+        <div style={{ display: 'grid', gap: 10 }}>
+          <strong style={{ fontSize: 13 }}>Brand Kit & Watermark</strong>
+          <div className="brand-kit-grid">
+            {Object.entries(defaultBrandKits).map(([key, kit]) => {
+              const isActive = (project.brandKit?.name === kit.name) || (!project.brandKit && key === 'qed');
+              return (
+                <div
+                  key={key}
+                  className={`brand-kit-card ${isActive ? 'active-kit' : ''}`}
+                  onClick={() => {
+                    commit({ ...project, brandKit: kit });
+                    setNotice(`Applied brand kit: ${kit.name}`);
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong style={{ fontSize: 12, color: isActive ? 'var(--primary)' : 'inherit' }}>{kit.name}</strong>
+                    <div style={{ width: 14, height: 14, borderRadius: kit.logoStyle === 'circle' ? '50%' : 2, background: kit.accentColor }}/>
+                  </div>
+                  <small style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>{kit.brandName} · {kit.logoStyle ?? 'square'}</small>
+                  <span style={{ fontSize: 9, opacity: 0.8 }}>{kit.tagline}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'grid', gap: 10, marginTop: 8, padding: 12, background: 'var(--background)', borderRadius: 5, border: '1px solid var(--border)' }}>
+            <Field label="Brand Display Name">
+              <input
+                value={project.brandKit?.brandName ?? 'QED'}
+                onChange={e => commit({
+                  ...project,
+                  brandKit: {
+                    name: project.brandKit?.name ?? 'Custom Brand',
+                    brandName: e.target.value,
+                    tagline: project.brandKit?.tagline ?? 'A LITTLE CLARITY. A BIG DIFFERENCE.',
+                    footnote: project.brandKit?.footnote ?? 'MOMENTS OF UNDERSTANDING',
+                    accentColor: project.brandKit?.accentColor ?? 'oklch(0.845 0.135 153)',
+                    logoStyle: project.brandKit?.logoStyle ?? 'square',
+                  },
+                })}
+              />
+            </Field>
+            <Field label="Tagline (Top Right)">
+              <input
+                value={project.brandKit?.tagline ?? 'A LITTLE CLARITY. A BIG DIFFERENCE.'}
+                onChange={e => commit({
+                  ...project,
+                  brandKit: {
+                    name: project.brandKit?.name ?? 'Custom Brand',
+                    brandName: project.brandKit?.brandName ?? 'QED',
+                    tagline: e.target.value,
+                    footnote: project.brandKit?.footnote ?? 'MOMENTS OF UNDERSTANDING',
+                    accentColor: project.brandKit?.accentColor ?? 'oklch(0.845 0.135 153)',
+                    logoStyle: project.brandKit?.logoStyle ?? 'square',
+                  },
+                })}
+              />
+            </Field>
+            <Field label="Footnote (Bottom Watermark)">
+              <input
+                value={project.brandKit?.footnote ?? 'MOMENTS OF UNDERSTANDING'}
+                onChange={e => commit({
+                  ...project,
+                  brandKit: {
+                    name: project.brandKit?.name ?? 'Custom Brand',
+                    brandName: project.brandKit?.brandName ?? 'QED',
+                    tagline: project.brandKit?.tagline ?? 'A LITTLE CLARITY. A BIG DIFFERENCE.',
+                    footnote: e.target.value,
+                    accentColor: project.brandKit?.accentColor ?? 'oklch(0.845 0.135 153)',
+                    logoStyle: project.brandKit?.logoStyle ?? 'square',
+                  },
+                })}
+              />
+            </Field>
+            <Field label="Logo Style">
+              <select
+                value={project.brandKit?.logoStyle ?? 'square'}
+                onChange={e => {
+                  const style = e.target.value as 'square' | 'circle' | 'minimal';
+                  commit({
+                    ...project,
+                    brandKit: {
+                      name: project.brandKit?.name ?? 'Custom Brand',
+                      brandName: project.brandKit?.brandName ?? 'QED',
+                      tagline: project.brandKit?.tagline ?? 'A LITTLE CLARITY. A BIG DIFFERENCE.',
+                      footnote: project.brandKit?.footnote ?? 'MOMENTS OF UNDERSTANDING',
+                      accentColor: project.brandKit?.accentColor ?? 'oklch(0.845 0.135 153)',
+                      logoStyle: style,
+                    },
+                  });
+                }}
+              >
+                <option value="square">Square ∎ (QED default)</option>
+                <option value="circle">Circle ●</option>
+                <option value="minimal">Minimal (No icon)</option>
+              </select>
+            </Field>
+          </div>
+        </div>
+        <Field label="Video format">
+          <select value={project.format} onChange={e => commit({ ...project, format: e.target.value as StudioProject['format'] })}>
+            <option value="portrait">9:16 · Portrait</option>
+            <option value="landscape">16:9 · Landscape</option>
+          </select>
+        </Field>
+        <Button variant="outline" onClick={() => setSafeZones(v => !v)}>
+          <ShieldCheck size={16}/>{safeZones ? 'Hide safe zones' : 'Show safe zones'}
+        </Button>
+      </div>}
       {panel === 'export' && <div className="modal-content"><div className="export-summary"><Film size={26}/><div><strong>{project.name}</strong><span>{ratio} · {timecode(duration)} · {project.scenes.length} scenes</span></div></div><ExportPanel project={project} time={time} audioUrl={audioUrl} muted={muted} volume={volume} onProjectDownload={exportProject}/><Button variant="outline" onClick={() => file.current?.click()}><FolderOpen size={16}/>Import project</Button></div>}
     </DialogContent></Dialog>
     {importWarnings.length > 0 && <div className="compatibility-notice" role="status"><span>{importWarnings.join(' ')}</span><IconButton icon={X} label="Dismiss import warning" onClick={() => setImportWarnings([])}/></div>}

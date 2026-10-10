@@ -18,3 +18,25 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+let storage: Record<string, string> = {};
+const localStorageMock: Storage = {
+  getItem: (key: string) => storage[key] ?? null,
+  setItem: (key: string, value: string) => { storage[key] = String(value); },
+  removeItem: (key: string) => { delete storage[key]; },
+  clear: () => { storage = {}; },
+  key: (index: number) => Object.keys(storage)[index] ?? null,
+  length: 0,
+};
+Object.defineProperty(localStorageMock, 'length', {
+  get: () => Object.keys(storage).length,
+});
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+  writable: true,
+});
+Object.defineProperty(globalThis, 'localStorage', {
+  value: localStorageMock,
+  writable: true,
+});
+

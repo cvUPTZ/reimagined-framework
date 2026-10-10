@@ -96,4 +96,28 @@ describe('project compatibility and rendering timing', () => {
       transitionDuration: 0.8,
     });
   });
+  it('round trips brand kits and audio track configurations without data loss', () => {
+    const withBrandAndAudio = {
+      ...defaultProject,
+      brandKit: {
+        name: 'BAC Excellence',
+        brandName: 'BAC 2026',
+        tagline: 'DIPLOMA WITH DISTINCTION',
+        footnote: 'EXCELLENCE IN MATHEMATICS',
+        accentColor: 'oklch(0.83 0.14 95)',
+        logoStyle: 'square' as const,
+      },
+      audioTrack: {
+        name: 'narration.webm',
+        url: 'blob:http://localhost/test-audio',
+        volume: 80,
+        muted: false,
+        startOffset: 1.5,
+        ducking: true,
+      },
+    };
+    const parsed = parseProjectFile(projectFile(withBrandAndAudio)).project;
+    expect(parsed.brandKit).toEqual(withBrandAndAudio.brandKit);
+    expect(parsed.audioTrack).toEqual(withBrandAndAudio.audioTrack);
+  });
 });

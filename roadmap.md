@@ -17,6 +17,6 @@
 - [x] Duration-proportional timeline, zoom, clip trimming/reordering, and playback synchronization.
 - [x] Precise canvas layers, typography controls, and transitions.
 - [x] Mathematics engine and original educational library restoration.
-- [ ] Cloud project/media library, richer audio, and brand kits.
+- [x] Cloud project/media library, richer audio, and brand kits.
 - [ ] AI outlines and stored narration.
 - [ ] Planner and publishing packages; approved integrations last.
