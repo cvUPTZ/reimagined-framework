@@ -1,278 +1,98 @@
-import { createFileRoute } from "@tanstack/react-router";
-import {
-  AudioLines,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  CircleHelp,
-  Copy,
-  Download,
-  Expand,
-  Film,
-  FolderOpen,
-  ImagePlus,
-  LayoutTemplate,
-  Lightbulb,
-  Maximize2,
-  Mic2,
-  MoreHorizontal,
-  Music2,
-  Pause,
-  Play,
-  Plus,
-  Redo2,
-  Scissors,
-  Settings2,
-  ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  Trash2,
-  Undo2,
-  Upload,
-  Volume2,
-} from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  buildScenes,
-  defaultProject,
-  duplicateScene,
-  moveScene,
-  totalDuration,
-  type Scene,
-  type StudioProject,
-  type StudioTab,
-} from "@/lib/studio";
+import { createFileRoute } from '@tanstack/react-router';
+import { AudioLines, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clapperboard, Copy, Download, Expand, Film, FolderOpen, Layers, LayoutTemplate, MoreHorizontal, Pause, Play, Plus, Redo2, Settings2, ShieldCheck, SkipBack, SlidersHorizontal, Sparkles, Trash2, Undo2, Upload, Volume2, VolumeX, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScenePreview } from '@/components/studio/scene-preview';
+import { buildScenes, duplicateScene, moveScene, totalDuration, type Scene, type StudioProject } from '@/lib/studio';
+import { phaseNames, phaseOf, phaseClass, referenceProject, timecode } from '@/lib/reference-project';
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "QED Studio — محرّر فيديوهات الرياضيات" },
-      { name: "description", content: "استوديو عربي لصناعة فيديوهات رياضيات قصيرة وواضحة." },
-      { property: "og:title", content: "QED Studio — محرّر فيديوهات الرياضيات" },
-      { property: "og:description", content: "أنشئ المشاهد، سجّل الصوت، وصدّر فيديوك من مساحة عمل واحدة." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: Index,
+export const Route = createFileRoute('/')({
+  head: () => ({ meta: [
+    { title: 'QED Studio — Visual mathematics editor' },
+    { name: 'description', content: 'Create and edit clear mathematical stories in QED Studio. Shape scenes, motion, and your next moment of understanding.' },
+    { property: 'og:title', content: 'QED Studio — Visual mathematics editor' },
+    { property: 'og:description', content: 'A focused workspace for visual mathematics, scene editing, and storytelling.' },
+    { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary_large_image' },
+  ] }), component: Studio,
 });
+type Panel = 'projects' | 'templates' | 'library' | 'audio' | 'settings' | 'export' | null;
+function IconButton({ icon: Icon, label, onClick, disabled }: { icon: ComponentType<{ size?: number }>; label: string; onClick: () => void; disabled?: boolean }) { return <Button variant="ghost" size="icon" title={label} aria-label={label} onClick={onClick} disabled={disabled}><Icon size={16}/></Button>; }
+function Field({ label, children, extra }: { label: string; children: ReactNode; extra?: ReactNode }) { return <label className="field"><span className="field-label">{label}<span>{extra}</span></span>{children}</label>; }
 
-function Index() {
-  const [tab, setTab] = useState<StudioTab>("scenes");
-  const [project, setProject] = useState<StudioProject>(defaultProject);
-  const [selected, setSelected] = useState(1);
-  const [safeZones, setSafeZones] = useState(true);
+function Studio() {
+  const [project, setProject] = useState<StudioProject>(referenceProject);
+  const [selected, setSelected] = useState(0);
+  const [panel, setPanel] = useState<Panel>(null);
+  const [inspector, setInspector] = useState('Content');
   const [playing, setPlaying] = useState(false);
-  const [zoom, setZoom] = useState(74);
-  const [playhead, setPlayhead] = useState(3.8);
-  const [saved, setSaved] = useState(true);
+  const [time, setTime] = useState(0);
+  const [saved, setSaved] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [history, setHistory] = useState<StudioProject[]>([]);
   const [future, setFuture] = useState<StudioProject[]>([]);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [zoom, setZoom] = useState('Fit');
+  const [safeZones, setSafeZones] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(65);
+  const [audioUrl, setAudioUrl] = useState('');
+  const [audioName, setAudioName] = useState('');
+  const [notice, setNotice] = useState('');
+  const file = useRef<HTMLInputElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const audio = useRef<HTMLAudioElement>(null);
   const duration = useMemo(() => totalDuration(project.scenes), [project.scenes]);
   const scene = project.scenes[selected] ?? project.scenes[0];
-
   useEffect(() => {
-    const raw = window.localStorage.getItem("qed-studio-project-v1");
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as StudioProject;
-      if (Array.isArray(parsed.scenes) && parsed.scenes.length > 0) setProject(parsed);
-    } catch {
-      window.localStorage.removeItem("qed-studio-project-v1");
-    }
+    try { const raw = localStorage.getItem('qed-studio-project-v1'); if (raw) { const p = JSON.parse(raw) as StudioProject; if (Array.isArray(p.scenes) && p.scenes.length) setProject(p); } } catch { /* Ignore invalid saved files. */ }
+    setHydrated(true);
   }, []);
-
-  useEffect(() => {
-    setSaved(false);
-    const timer = window.setTimeout(() => {
-      window.localStorage.setItem("qed-studio-project-v1", JSON.stringify(project));
-      setSaved(true);
-    }, 450);
-    return () => window.clearTimeout(timer);
-  }, [project]);
-
-  useEffect(() => {
-    if (!playing) return;
-    const timer = window.setInterval(() => {
-      setPlayhead((current) => (current >= duration ? 0 : Math.min(duration, current + 0.1)));
-    }, 100);
-    return () => window.clearInterval(timer);
-  }, [duration, playing]);
-
-  const commit = (next: StudioProject) => {
-    setHistory((items) => [...items.slice(-29), project]);
-    setFuture([]);
-    setProject(next);
-  };
-
-  const updateScene = (patch: Partial<Scene>) => {
-    if (!scene) return;
-    commit({ ...project, scenes: project.scenes.map((item) => (item.id === scene.id ? { ...item, ...patch } : item)) });
-  };
-
-  const undo = () => {
-    const previous = history.at(-1);
-    if (!previous) return;
-    setFuture((items) => [project, ...items]);
-    setHistory((items) => items.slice(0, -1));
-    setProject(previous);
-  };
-
-  const redo = () => {
-    const next = future[0];
-    if (!next) return;
-    setHistory((items) => [...items, project]);
-    setFuture((items) => items.slice(1));
-    setProject(next);
-  };
-
-  const exportProject = () => {
-    const blob = new Blob([JSON.stringify({ app: "QED Studio", format: 1, savedAt: new Date().toISOString(), project }, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${project.name}.cmb.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const importProject = async (file: File | undefined) => {
-    if (!file) return;
-    const parsed = JSON.parse(await file.text()) as { project?: StudioProject } | StudioProject;
-    const next = "project" in parsed && parsed.project ? parsed.project : (parsed as StudioProject);
-    if (!Array.isArray(next.scenes) || next.scenes.length === 0) return;
-    commit({ ...next, id: `${next.id || "import"}-${Date.now()}` });
-    setSelected(0);
-  };
-
-  return (
-    <div dir="rtl" className="studio-shell">
-      <header className="topbar">
-        <div className="brand-lockup">
-          <span className="brand-mark">∎</span>
-          <div><strong>QED</strong><span>STUDIO</span></div>
-        </div>
-        <div className="topbar-divider" />
-        <button className="project-switcher" aria-label="فتح قائمة المشاريع">
-          <span className="project-icon"><FolderOpen size={17} /></span>
-          <span><small>المشروع الحالي</small><strong>{project.name}</strong></span>
-          <ChevronDown size={15} />
-        </button>
-        <div className="save-state"><span className={saved ? "save-dot saved" : "save-dot"} />{saved ? "تم الحفظ" : "جارٍ الحفظ"}</div>
-        <div className="topbar-spacer" />
-        <div className="history-controls">
-          <Button variant="icon" size="icon" aria-label="تراجع" onClick={undo} disabled={!history.length}><Undo2 size={17} /></Button>
-          <Button variant="icon" size="icon" aria-label="إعادة" onClick={redo} disabled={!future.length}><Redo2 size={17} /></Button>
-        </div>
-        <button className="format-switch" onClick={() => commit({ ...project, format: project.format === "portrait" ? "landscape" : "portrait" })}>
-          <span className={project.format === "portrait" ? "format-icon portrait" : "format-icon"} />
-          {project.format === "portrait" ? "عمودي 9:16" : "أفقي 16:9"}
-          <ChevronDown size={14} />
-        </button>
-        <Button variant={safeZones ? "quiet" : "icon"} size="icon" aria-label="مناطق الأمان" onClick={() => setSafeZones(!safeZones)}><ShieldCheck size={18} /></Button>
-        <Button variant="icon" size="icon" aria-label="المساعدة"><CircleHelp size={18} /></Button>
-        <div className="avatar">ز</div>
-      </header>
-
-      <aside className="rail" aria-label="أقسام الاستوديو">
-        <div className="rail-main">
-          <RailButton active={tab === "ideas"} icon={<Lightbulb />} label="الأفكار" onClick={() => setTab("ideas")} />
-          <RailButton active={tab === "scenes"} icon={<LayoutTemplate />} label="المشاهد" onClick={() => setTab("scenes")} />
-          <RailButton active={tab === "audio"} icon={<AudioLines />} label="الصوت" onClick={() => setTab("audio")} />
-          <RailButton active={tab === "export"} icon={<Download />} label="التصدير" onClick={() => setTab("export")} />
-        </div>
-        <div className="rail-bottom"><RailButton icon={<Settings2 />} label="الإعدادات" /><RailButton icon={<CircleHelp />} label="المساعدة" /></div>
-      </aside>
-
-      <main className="workspace">
-        <section className="stage-area">
-          <div className="stage-toolbar">
-            <div className="stage-title"><Film size={15} /><span>المعاينة المباشرة</span><span className="live-pill"><i /> مباشر</span></div>
-            <div className="zoom-control">
-              <Button variant="icon" size="icon" aria-label="تصغير" onClick={() => setZoom(Math.max(40, zoom - 5))}><ChevronRight size={16} /></Button>
-              <input aria-label="التكبير" type="range" min="40" max="100" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
-              <span>{zoom}%</span>
-              <Button variant="icon" size="icon" aria-label="تكبير"><Maximize2 size={16} /></Button>
-            </div>
-          </div>
-          <div className="stage-canvas-area">
-            <div className={`video-frame ${project.format}`} style={{ "--preview-scale": zoom / 74 } as CSSProperties}>
-              <div className="frame-grid" />
-              {safeZones && <div className="safe-zone"><span>منطقة آمنة</span></div>}
-              <div className={`scene-visual kind-${scene?.kind ?? "hook"}`}>
-                <div className="visual-orbit orbit-one" /><div className="visual-orbit orbit-two" />
-                <span className="scene-kicker">QED · {project.level}</span>
-                <h1>{scene?.body.split("\n").map((line) => <span key={line}>{line}</span>)}</h1>
-                <div className="math-block">{project.expression}</div>
-                <div className="progress-bars"><span /><span /><span /><span /><span /></div>
-              </div>
-              <div className="frame-watermark">QED ∎</div>
-            </div>
-          </div>
-          <div className="transport">
-            <div className="transport-left"><Button variant="icon" size="icon" aria-label="السابق" onClick={() => setSelected(Math.max(0, selected - 1))}><ChevronRight size={18} /></Button></div>
-            <Button className="play-button" size="icon" aria-label={playing ? "إيقاف" : "تشغيل"} onClick={() => setPlaying(!playing)}>{playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}</Button>
-            <Button variant="icon" size="icon" aria-label="التالي" onClick={() => setSelected(Math.min(project.scenes.length - 1, selected + 1))}><ChevronLeft size={18} /></Button>
-            <span className="timecode" dir="ltr">{playhead.toFixed(1)} / {duration.toFixed(1)}s</span>
-            <div className="transport-spacer" />
-            <Button variant="icon" size="icon" aria-label="الصوت"><Volume2 size={18} /></Button>
-            <Button variant="icon" size="icon" aria-label="ملء الشاشة"><Expand size={17} /></Button>
-          </div>
-        </section>
-
-        <PropertiesPanel tab={tab} project={project} scene={scene} onProject={(patch) => commit({ ...project, ...patch })} onScene={updateScene} onBuild={() => { commit({ ...project, scenes: buildScenes(project) }); setSelected(0); setTab("scenes"); }} onExport={exportProject} onImport={() => fileRef.current?.click()} safeZones={safeZones} />
+  useEffect(() => { if (!hydrated) return; setSaved(false); const timer = setTimeout(() => { try { localStorage.setItem('qed-studio-project-v1', JSON.stringify(project)); setSaved(true); } catch { setNotice('Browser storage is full. Download your project to save it.'); } }, 450); return () => clearTimeout(timer); }, [project, hydrated]);
+  useEffect(() => { if (!playing) return; const id = setInterval(() => setTime(t => { const next = t + .1; if (next >= duration) { setPlaying(false); setSelected(0); return 0; } let sum = 0; setSelected(Math.max(0, project.scenes.findIndex(s => { sum += s.duration; return next < sum; }))); return next; }), 100); return () => clearInterval(id); }, [playing, duration, project.scenes]);
+  useEffect(() => { if (!audio.current) return; audio.current.volume = volume / 100; audio.current.muted = muted; if (playing) void audio.current.play().catch(() => {}); else audio.current.pause(); }, [playing, volume, muted, audioUrl]);
+  useEffect(() => () => { if (audioUrl) URL.revokeObjectURL(audioUrl); }, [audioUrl]);
+  useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(''), 4000); return () => clearTimeout(t); }, [notice]);
+  function commit(p: StudioProject) { setHistory(h => [...h.slice(-29), project]); setFuture([]); setProject(p); }
+  function edit(patch: Partial<Scene>) { if (!scene) return; commit({ ...project, scenes: project.scenes.map(s => s.id === scene.id ? { ...s, ...patch } : s) }); }
+  function select(i: number) { const index = Math.max(0, Math.min(project.scenes.length - 1, i)); setSelected(index); const next = project.scenes.slice(0, index).reduce((sum, s) => sum + s.duration, 0); setTime(next); if (audio.current) audio.current.currentTime = next; }
+  function undo() { const p = history.at(-1); if (!p) return; setFuture(f => [project, ...f]); setHistory(h => h.slice(0, -1)); setProject(p); setSelected(i => Math.min(i, p.scenes.length - 1)); }
+  function redo() { const p = future[0]; if (!p) return; setHistory(h => [...h, project]); setFuture(f => f.slice(1)); setProject(p); setSelected(i => Math.min(i, p.scenes.length - 1)); }
+  function add() { const next: Scene = { id: crypto.randomUUID(), label: String(project.scenes.length + 1).padStart(2, '0'), title: 'Untitled scene', body: 'A new perspective.', duration: 5, kind: 'explain', phase: 'Intuition', animation: 'Fade', visual: 'curve', fontSize: 42 }; commit({ ...project, scenes: [...project.scenes, next] }); setSelected(project.scenes.length); setTime(duration); }
+  function duplicate() { commit({ ...project, scenes: duplicateScene(project.scenes, selected) }); setSelected(selected + 1); }
+  function remove() { if (project.scenes.length <= 1) return; commit({ ...project, scenes: project.scenes.filter((_, i) => i !== selected).map((s,i) => ({ ...s, label: String(i+1).padStart(2,'0') })) }); setSelected(i => Math.max(0, i - 1)); setTime(0); }
+  function load(p: StudioProject) { commit(p); setSelected(0); setTime(0); setPlaying(false); setPanel(null); }
+  function exportProject() { const url = URL.createObjectURL(new Blob([JSON.stringify({ app: 'QED Studio', format: 1, project }, null, 2)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = `${project.name}.cmb.json`; a.click(); URL.revokeObjectURL(url); setNotice('Editable project downloaded'); }
+  async function importFile(f: File) { try { const parsed = JSON.parse(await f.text()); const p = parsed.project ?? parsed; if (!Array.isArray(p.scenes) || !p.scenes.length || p.scenes.some((s: Scene) => typeof s.body !== 'string' || !Number.isFinite(s.duration) || s.duration <= 0)) throw new Error(); load({ ...referenceProject, ...p }); setNotice('Project imported'); } catch { setNotice('Could not open this project. Choose a QED project JSON file.'); } }
+  function seek(n: number) { setTime(n); let sum = 0; const i = project.scenes.findIndex(s => { sum += s.duration; return n < sum; }); setSelected(i < 0 ? project.scenes.length - 1 : i); if (audio.current) audio.current.currentTime = n; }
+  if (!scene) return null;
+  const ratio = project.format === 'portrait' ? '9:16' : '16:9';
+  return <div className="studio-shell" dir="ltr">
+    <aside className="navigation-rail"><div className="rail-logo">q<span>∎</span></div><nav className="rail-links" aria-label="Studio navigation">{([{ id: null, icon: Clapperboard, label: 'Editor' }, { id: 'projects', icon: FolderOpen, label: 'Projects' }, { id: 'templates', icon: LayoutTemplate, label: 'Templates' }, { id: 'library', icon: BookOpen, label: 'Library' }, { id: 'audio', icon: AudioLines, label: 'Audio' }] as const).map(n => <Button key={n.label} variant="ghost" className={`rail-item ${panel === n.id ? 'rail-active' : ''}`} onClick={() => setPanel(n.id)} title={n.label}><n.icon size={20}/><span>{n.label}</span></Button>)}</nav><div className="rail-bottom"><IconButton icon={Settings2} label="Studio settings" onClick={() => setPanel('settings')}/><IconButton icon={CircleHelp} label="Help" onClick={() => setNotice('Your project is saved in this browser. Use Export to download a copy.')}/><span className="user-avatar">AZ</span></div></aside>
+    <div className="studio-main">
+      <header className="topbar"><div className="wordmark">QED<span>∎</span><i/><small>STUDIO</small></div><div className="project-title"><span className="breadcrumb">Workspace<ChevronRight size={12}/></span><input aria-label="Project name" value={project.name} onChange={e => commit({ ...project, name: e.target.value })}/><IconButton icon={ChevronDown} label="Your projects" onClick={() => setPanel('projects')}/></div><div className="header-actions"><span className="save-state"><Check size={13}/>{saved ? 'All changes saved' : 'Saving changes…'}</span><IconButton icon={FolderOpen} label="Open project" onClick={() => file.current?.click()}/><Button variant="outline" size="sm" onClick={() => { setPlaying(true); void stage.current?.requestFullscreen?.(); }}><Play size={14}/>Preview</Button><Button size="sm" onClick={() => setPanel('export')}><Download size={14}/>Export<ChevronDown size={12}/></Button></div></header>
+      <div className="workspace-toolbar"><div className="workspace-heading"><span className="live-dot"/><strong>Video editor</strong><span className="toolbar-divider"/><small>{project.scenes.length} scenes · {timecode(duration)}</small></div><div className="toolbar-actions"><IconButton icon={Undo2} label="Undo" onClick={undo} disabled={!history.length}/><IconButton icon={Redo2} label="Redo" onClick={redo} disabled={!future.length}/><span className="toolbar-divider"/><Button variant="ghost" size="sm" onClick={() => setPanel('templates')}><Sparkles size={16}/>Templates</Button><IconButton icon={MoreHorizontal} label="Workspace settings" onClick={() => setPanel('settings')}/></div></div>
+      <main className="editor-grid">
+        <section className="scene-sidebar"><div className="section-heading"><div><Layers size={16}/><h2>Scenes</h2><span className="count">{String(project.scenes.length).padStart(2,'0')}</span></div><IconButton icon={Plus} label="Add scene" onClick={add}/></div><div className="scene-list">{project.scenes.map((s,i) => <div key={s.id} className={`scene-item ${selected === i ? 'scene-selected' : ''}`} draggable onDragStart={e => e.dataTransfer.setData('text/plain', String(i))} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (!Number.isInteger(from)) return; commit({ ...project, scenes: moveScene(project.scenes, from, i) }); select(i); }}><Button variant="ghost" className="scene-select-button" aria-label={`Select scene ${i+1}: ${s.title}`} aria-pressed={selected === i} onClick={() => select(i)}><div className={`scene-thumb ${phaseClass(phaseOf(s))}`}><ScenePreview project={project} scene={s} miniature/><span className="thumbnail-duration">{s.duration}s</span></div><div className="scene-details"><div className="scene-number">{String(i+1).padStart(2,'0')}<span className={`phase-label ${phaseClass(phaseOf(s))}`}>{phaseOf(s)}</span></div><strong dir="auto">{s.title}</strong><small>{s.duration.toFixed(1)} sec<span>·</span>{s.animation ?? 'Fade'}</small></div></Button></div>)}</div><Button variant="outline" className="add-scene" size="sm" onClick={add}><Plus size={15}/>Add scene</Button><div className="sidebar-footer"><span className="live-dot"/>Story arc<span>Custom<ChevronDown size={11}/></span></div></section>
+        <section className="preview-area"><div className="preview-heading"><div><span className="overline">CANVAS</span><span className="canvas-ratio">{ratio}<span>·</span>{project.format === 'portrait' ? '1080 × 1920' : '1920 × 1080'}</span></div><div className="preview-tools"><select aria-label="Canvas zoom" value={zoom} onChange={e => setZoom(e.target.value)}><option>Fit</option><option>80%</option><option>60%</option></select><IconButton icon={Expand} label="Full screen canvas" onClick={() => void stage.current?.requestFullscreen?.()}/></div></div><div className={`canvas-workspace ${project.format === 'landscape' ? 'canvas-landscape' : ''}`}><div className={`video-stage zoom-${zoom === 'Fit' ? 'fit' : zoom.replace('%','')}`} ref={stage}><ScenePreview key={scene.id} project={project} scene={scene} playing={playing} safeZones={safeZones}/></div><span className="canvas-scene-label">SCENE {String(selected+1).padStart(2,'0')}<span>/ {String(project.scenes.length).padStart(2,'0')}</span></span></div><div className="playback-bar"><div className="playback-left"><IconButton icon={muted ? VolumeX : Volume2} label="Toggle audio" onClick={() => setMuted(m => !m)}/><span className="preview-quality">HD</span></div><div className="playback-center"><IconButton icon={SkipBack} label="Restart playback" onClick={() => select(0)}/><Button variant="secondary" size="icon" className="play-button" aria-label={playing ? 'Pause' : 'Play'} onClick={() => setPlaying(p => !p)}>{playing ? <Pause size={16}/> : <Play size={16}/>}</Button><span className="time-display">{timecode(time)}<span>/ {timecode(duration)}</span></span></div><span className="live-preview"><span className="live-dot"/>{playing ? 'Playing' : 'Live preview'}</span></div></section>
+        <aside className="inspector"><div className="section-heading"><div><SlidersHorizontal size={16}/><h2>Scene properties</h2></div><IconButton icon={MoreHorizontal} label="Duplicate selected scene" onClick={duplicate}/></div><div className="inspector-tabs">{['Content','Style','Motion'].map(t => <Button variant="ghost" key={t} className={inspector === t ? 'tab-active' : ''} onClick={() => setInspector(t)}>{t}</Button>)}</div><div className="inspector-content">
+          <Field label="Scene name"><input aria-label="Scene name" dir="auto" value={scene.title} onChange={e => edit({ title: e.target.value })}/></Field><div className="field-row"><Field label="Scene type"><select value={phaseOf(scene)} onChange={e => edit({ phase: e.target.value })}>{phaseNames.map(p => <option key={p}>{p}</option>)}</select></Field><Field label="Duration"><div className="suffix-input"><input aria-label="Duration" type="number" min="1" max="60" value={scene.duration} onChange={e => { const n = Number(e.target.value); if (n >= 1 && n <= 60) edit({ duration: n }); }}/><span>sec</span></div></Field></div>
+          {inspector === 'Content' && <><div className="field-section"><Field label="On-screen text" extra="Text layer"><textarea aria-label="On-screen text" dir="auto" rows={3} value={scene.body} onChange={e => edit({ body: e.target.value })}/></Field><div className="text-tools"><span><b>T</b>Space Grotesk</span><Button variant="ghost" size="sm" onClick={() => setInspector('Style')}>{scene.fontSize ?? 42} px<ChevronDown size={12}/></Button></div></div><div className="field-section"><Field label="Math expression" extra={<i className="math-tag">ƒx</i>}><input aria-label="Math expression" className="formula-input" value={scene.expression ?? project.expression} onChange={e => edit({ expression: e.target.value })}/></Field></div><div className="field-section"><Field label="Visual model"><select value={scene.visual ?? 'curve'} onChange={e => edit({ visual: e.target.value as Scene['visual'] })}><option value="curve">Function curve</option><option value="tangent">Tangent & slope</option><option value="none">Text only</option></select></Field><div className="model-miniature"><svg viewBox="0 0 240 65" aria-hidden="true"><path d="M25 50H220M115 8V58" className="art-axis"/><path d="M58 12Q118 85 178 12" fill="none" className="art-curve"/></svg><span>f(x) = x²</span></div></div><div className="field-section"><Field label="Voice-over script" extra={<AudioLines size={14}/>}><textarea rows={3} value={scene.narration ?? scene.body} onChange={e => edit({ narration: e.target.value })}/></Field><Button variant="ghost" className="voice-button" size="sm" onClick={() => { if (!('speechSynthesis' in window)) { setNotice('Speech playback is unavailable.'); return; } speechSynthesis.cancel(); const text = scene.narration ?? scene.body; const u = new SpeechSynthesisUtterance(text); u.lang = /[\u0600-\u06ff]/.test(text) ? 'ar' : 'en-US'; speechSynthesis.speak(u); }}><Play size={12}/>Listen to script</Button></div></>}
+          {inspector === 'Style' && <><div className="field-section"><Field label="Text size" extra={`${scene.fontSize ?? 42} px`}><input aria-label="Text size" type="range" min="20" max="64" value={scene.fontSize ?? 42} onChange={e => edit({ fontSize: Number(e.target.value) })}/></Field></div><div className="field-section"><Field label="Aspect ratio"><select value={project.format} onChange={e => commit({ ...project, format: e.target.value as StudioProject['format'] })}><option value="portrait">9:16 · Portrait</option><option value="landscape">16:9 · Landscape</option></select></Field></div><Button variant={safeZones ? 'secondary' : 'outline'} className="w-full" onClick={() => setSafeZones(v => !v)}><ShieldCheck size={16}/>{safeZones ? 'Hide safe zones' : 'Show safe zones'}</Button></>}
+          {inspector === 'Motion' && <><div className="field-section"><Field label="Entrance animation"><select value={scene.animation ?? 'Fade'} onChange={e => edit({ animation: e.target.value as Scene['animation'] })}>{['Draw in','Fade','Slide up','None'].map(a => <option key={a}>{a}</option>)}</select></Field></div><Button variant="outline" className="w-full" onClick={() => { select(selected); setPlaying(true); }}><Play size={14}/>Preview animation</Button><div className="field-section"><Field label="Scene timing" extra={`${scene.duration}s`}><input type="range" min="1" max="60" value={scene.duration} onChange={e => edit({ duration: Number(e.target.value) })}/></Field></div></>}
+        </div><div className="inspector-footer"><Button variant="ghost" size="sm" onClick={duplicate}><Copy size={14}/>Duplicate</Button><IconButton icon={Trash2} label="Delete scene" onClick={remove} disabled={project.scenes.length <= 1}/></div></aside>
       </main>
-
-      <section className="timeline" aria-label="الخط الزمني">
-        <div className="timeline-header">
-          <div className="timeline-tools"><Button variant="icon" size="icon" aria-label="قص"><Scissors size={16} /></Button><Button variant="icon" size="icon" aria-label="نسخ" onClick={() => { commit({ ...project, scenes: duplicateScene(project.scenes, selected) }); setSelected(selected + 1); }}><Copy size={16} /></Button><span className="tool-divider" /><Button variant="icon" size="icon" aria-label="حذف" disabled={project.scenes.length <= 1} onClick={() => { commit({ ...project, scenes: project.scenes.filter((_, i) => i !== selected) }); setSelected(Math.max(0, selected - 1)); }}><Trash2 size={16} /></Button></div>
-          <div className="timeline-label"><span>المشاهد</span><b>{project.scenes.length}</b></div>
-          <div className="timeline-actions"><Button variant="outline" size="sm" onClick={() => { const next: Scene = { id: String(Date.now()), title: "مشهد جديد", label: String(project.scenes.length + 1).padStart(2, "0"), body: "اكتب فكرتك هنا", duration: 3, kind: "explain" }; commit({ ...project, scenes: [...project.scenes, next] }); setSelected(project.scenes.length); }}><Plus size={15} /> إضافة مشهد</Button><Button variant="icon" size="icon" aria-label="خيارات"><MoreHorizontal size={17} /></Button></div>
-        </div>
-        <div className="timeline-track">
-          {project.scenes.map((item, index) => <SceneCard key={item.id} scene={item} active={selected === index} onClick={() => { setSelected(index); setPlayhead(project.scenes.slice(0, index).reduce((sum, current) => sum + current.duration, 0)); }} onMove={(direction) => { const to = index + direction; commit({ ...project, scenes: moveScene(project.scenes, index, to) }); setSelected(Math.max(0, Math.min(project.scenes.length - 1, to))); }} />)}
-          <button className="add-scene-card" onClick={() => { const next: Scene = { id: String(Date.now()), title: "مشهد جديد", label: String(project.scenes.length + 1).padStart(2, "0"), body: "اكتب فكرتك هنا", duration: 3, kind: "explain" }; commit({ ...project, scenes: [...project.scenes, next] }); }}><Plus size={20} /><span>مشهد جديد</span></button>
-        </div>
-      </section>
-      <input ref={fileRef} type="file" accept=".json,.cmb.json,application/json" hidden onChange={(event) => void importProject(event.target.files?.[0])} />
+      <section className="timeline" aria-label="Timeline"><div className="timeline-toolbar"><div><Film size={15}/><h2>Timeline</h2><span className="timeline-total">{timecode(duration)}</span></div><div><IconButton icon={ChevronLeft} label="Previous scene" onClick={() => select(selected-1)}/><IconButton icon={ChevronRight} label="Next scene" onClick={() => select(selected+1)}/><span className="toolbar-divider"/><IconButton icon={Plus} label="Add timeline scene" onClick={add}/></div></div><div className="timeline-body"><div className="track-labels"><span>VIDEO<Film size={12}/></span><span>AUDIO<AudioLines size={12}/></span></div><div className="timeline-tracks"><div className="time-ruler">{Array.from({ length: Math.ceil(duration/5)+1 },(_,i) => <span key={i}>{timecode(i*5)}</span>)}</div><input className="timeline-scrubber" type="range" aria-label="Video playhead" min="0" max={duration} step=".1" value={time} onChange={e => seek(Number(e.target.value))}/><div className="video-track">{project.scenes.map((s,i) => <Button key={s.id} variant="ghost" className={`timeline-clip ${phaseClass(phaseOf(s))} ${selected === i ? 'clip-active' : ''}`} onClick={() => select(i)}><span>{String(i+1).padStart(2,'0')}</span><strong>{phaseOf(s)}</strong><small>{s.duration}s</small></Button>)}</div><Button variant="ghost" className={`audio-track ${audioUrl ? 'has-audio' : ''}`} onClick={() => setPanel('audio')}><AudioLines size={13}/><span>{audioName || 'No audio track'}</span><span className="waveform">{Array.from({ length: 45 },(_,i) => <i key={i} className={`wave-${i%5}`}/>)}</span><span>{audioUrl ? 'Edit audio' : '+ Add audio'}</span></Button></div></div></section>
+      <footer className="statusbar"><span><span className="live-dot"/>QED Studio<i>v5.0</i></span><span>{project.scenes.length} scenes · {ratio} · 30 fps</span><span>Made for moments of understanding. ∎</span></footer>
     </div>
-  );
-}
-
-function RailButton({ icon, label, active, onClick }: { icon: ReactNode; label: string; active?: boolean; onClick?: () => void }) {
-  return <button className={`rail-button ${active ? "active" : ""}`} aria-pressed={active} onClick={onClick}><span>{icon}</span><small>{label}</small></button>;
-}
-
-function SceneCard({ scene, active, onClick, onMove }: { scene: Scene; active: boolean; onClick: () => void; onMove: (direction: number) => void }) {
-  return <article className={`scene-card ${active ? "active" : ""}`} onClick={onClick}>
-    <div className={`scene-thumb kind-${scene.kind}`}><span>{scene.label}</span><strong>{scene.body.split("\n")[0]}</strong>{active && <div className="move-controls"><button aria-label="حرّك يميناً" onClick={(e) => { e.stopPropagation(); onMove(-1); }}><ChevronRight size={12} /></button><button aria-label="حرّك يساراً" onClick={(e) => { e.stopPropagation(); onMove(1); }}><ChevronLeft size={12} /></button></div>}</div>
-    <div className="scene-meta"><strong>{scene.title}</strong><span>{scene.duration.toFixed(1)} ث</span></div>
-  </article>;
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="field"><span>{label}</span>{children}</label>;
-}
-
-function PropertiesPanel({ tab, project, scene, onProject, onScene, onBuild, onExport, onImport, safeZones }: { tab: StudioTab; project: StudioProject; scene: Scene | undefined; onProject: (patch: Partial<StudioProject>) => void; onScene: (patch: Partial<Scene>) => void; onBuild: () => void; onExport: () => void; onImport: () => void; safeZones: boolean }) {
-  const titles = { ideas: ["مختبر الأفكار", "حوّل فكرة رياضية إلى قصة قصيرة"], scenes: ["خصائص المشهد", `المشهد ${scene?.label ?? "—"} · ${scene?.title ?? ""}`], audio: ["الصوت والتعليق", "رتّب صوتك وموسيقاك"], export: ["تصدير الفيديو", "افحص مشروعك قبل الإخراج"] } as const;
-  return <aside className="properties">
-    <div className="properties-heading"><div><h2>{titles[tab][0]}</h2><p>{titles[tab][1]}</p></div><Button variant="icon" size="icon" aria-label="إعدادات اللوحة"><SlidersHorizontal size={17} /></Button></div>
-    <div className="properties-scroll">
-      {tab === "scenes" && scene && <>
-        <div className="panel-section"><Field label="عنوان المشهد"><input value={scene.title} onChange={(e) => onScene({ title: e.target.value })} /></Field><Field label="النص على الشاشة"><textarea rows={4} value={scene.body} onChange={(e) => onScene({ body: e.target.value })} /></Field></div>
-        <div className="panel-section"><div className="section-title"><span>التوقيت</span><small>{scene.duration.toFixed(1)} ثانية</small></div><input className="range-wide" type="range" min="1" max="12" step="0.5" value={scene.duration} onChange={(e) => onScene({ duration: Number(e.target.value) })} /><div className="range-labels"><span>1 ث</span><span>12 ث</span></div></div>
-        <div className="panel-section"><div className="section-title"><span>نوع المشهد</span></div><div className="segmented">{(["hook", "explain", "rule", "cta"] as const).map((kind) => <button key={kind} className={scene.kind === kind ? "active" : ""} onClick={() => onScene({ kind })}>{({ hook: "خطاف", explain: "شرح", rule: "قاعدة", cta: "دعوة" })[kind]}</button>)}</div></div>
-        <div className="panel-section"><div className="section-title"><span>عناصر الشاشة</span></div><button className="asset-row"><span className="asset-icon"><ImagePlus size={17} /></span><span><strong>رسم بصري</strong><small>مخطط العملية</small></span><ChevronLeft size={15} /></button><button className="asset-row"><span className="asset-icon"><Sparkles size={17} /></span><span><strong>الحركة</strong><small>ظهور تدريجي · 0.4 ث</small></span><ChevronLeft size={15} /></button></div>
-      </>}
-      {tab === "ideas" && <>
-        <div className="panel-section form-stack"><Field label="المستوى"><select value={project.level} onChange={(e) => onProject({ level: e.target.value })}><option>BAC 2026</option><option>BEM 2026</option><option>Brevet</option><option>IB Mathematics</option></select></Field><Field label="الموضوع"><input value={project.topic} onChange={(e) => onProject({ topic: e.target.value })} /></Field><Field label="التعبير"><input dir="ltr" value={project.expression} onChange={(e) => onProject({ expression: e.target.value })} /></Field><Field label="الخطأ الشائع"><textarea rows={3} value={project.mistake} onChange={(e) => onProject({ mistake: e.target.value })} /></Field><Field label="خطة التصحيح"><textarea rows={3} value={project.remediation} onChange={(e) => onProject({ remediation: e.target.value })} /></Field><Field label="دعوة إلى التفاعل"><input value={project.cta} onChange={(e) => onProject({ cta: e.target.value })} /></Field></div><div className="sticky-action"><Button className="w-full" onClick={onBuild}><Sparkles size={16} /> بناء القصة والمشاهد</Button></div>
-      </>}
-      {tab === "audio" && <><div className="panel-section audio-meter"><div className="audio-source"><span><Mic2 size={18} /></span><div><strong>التعليق الصوتي</strong><small>لم يُسجّل بعد</small></div><Button variant="outline" size="sm">تسجيل</Button></div><div className="waveform">{Array.from({ length: 34 }).map((_, i) => <i key={i} style={{ height: `${18 + ((i * 13) % 34)}%` }} />)}</div></div><div className="panel-section"><div className="audio-source"><span><Music2 size={18} /></span><div><strong>الموسيقى</strong><small>Warm Focus · Lo-fi</small></div><button className="mini-toggle active"><span /></button></div><Field label="مستوى الموسيقى"><input className="range-wide" type="range" defaultValue="24" /></Field></div><div className="panel-section"><div className="section-title"><span>الملقّن</span><small>جاهز</small></div><p className="prompter-copy">اقرأ النص مشهداً بمشهد أثناء التسجيل. ينتقل الملقّن تلقائياً مع الخط الزمني.</p><Button variant="outline" className="w-full"><Mic2 size={15} /> فتح وضع التسجيل</Button></div></>}
-      {tab === "export" && <><div className="preflight"><div className="preflight-title"><ShieldCheck size={19} /><span><strong>جاهز للتصدير</strong><small>تم اجتياز الفحص الأساسي</small></span></div>{[["نسبة الأبعاد", project.format === "portrait" ? "9:16" : "16:9"], ["مدة الفيديو", `${totalDuration(project.scenes).toFixed(1)} ث`], ["منطقة الأمان", safeZones ? "مفعّلة" : "غير مفعّلة"], ["المشاهد", String(project.scenes.length)]].map(([key, value]) => <div className="check-row" key={key}><Check size={15} /><span>{key}</span><b>{value}</b></div>)}</div><div className="panel-section form-stack"><Field label="الدقة"><select defaultValue="1080"><option value="1080">1080 × 1920 · Full HD</option><option value="720">720 × 1280 · HD</option></select></Field><div className="field-pair"><Field label="معدل الإطارات"><select defaultValue="30"><option>30</option><option>60</option></select></Field><Field label="الجودة"><select defaultValue="high"><option value="high">عالية</option><option value="medium">متوسطة</option></select></Field></div></div><div className="export-actions"><Button className="w-full"><Film size={16} /> تصدير MP4</Button><Button variant="outline" className="w-full" onClick={onExport}><Download size={15} /> حفظ ملف المشروع</Button><Button variant="quiet" className="w-full" onClick={onImport}><Upload size={15} /> استيراد مشروع</Button></div></>}
-    </div>
-  </aside>;
+    <input ref={file} type="file" accept=".json,.cmb.json,.qed.json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void importFile(f); e.target.value = ''; }}/>{audioUrl && <audio ref={audio} src={audioUrl}/>}
+    <Dialog open={panel !== null} onOpenChange={open => { if (!open) setPanel(null); }}><DialogContent className="studio-modal"><span className="overline">QED STUDIO</span><DialogTitle>{panel ? { projects: 'Your projects', templates: 'Start with a story', library: 'Story & lesson', audio: 'Audio studio', settings: 'Studio settings', export: 'Ready for the world' }[panel] : ''}</DialogTitle><DialogDescription className="sr-only">{panel} options</DialogDescription>
+      {panel === 'projects' && <div className="modal-content"><Button variant="outline" onClick={() => file.current?.click()}><Upload size={16}/>Import project</Button><Button variant="outline" onClick={exportProject}><Download size={16}/>Save project file</Button><Button variant="secondary" className="project-option" onClick={() => load(referenceProject)}><Clapperboard size={18}/>The derivative, made visual<ChevronRight size={16}/></Button></div>}
+      {panel === 'templates' && <div className="template-grid">{[{ title: 'Visual intuition', type: 'curve' }, { title: 'Tangent & slope', type: 'tangent' }, { title: 'Blank canvas', type: 'none' }].map(t => <Button key={t.title} variant="outline" className="template-card" onClick={() => load({ ...referenceProject, id: crypto.randomUUID(), name: t.title, scenes: t.type === 'none' ? [{ ...referenceProject.scenes[0], id: crypto.randomUUID(), title: 'Untitled scene', body: 'Your story starts here.', expression: '', visual: 'none' } as Scene] : referenceProject.scenes.map(s => ({ ...s, visual: t.type as Scene['visual'] })) })}><div className="template-art">{t.type === 'none' ? <Plus size={30}/> : <svg viewBox="0 0 160 90"><path d="M10 65H150M80 10V85" className="art-axis"/><path d="M30 15Q80 115 130 15" className="art-curve" fill="none"/>{t.type === 'tangent' && <path d="M20 30L125 85" className="art-tangent"/>}</svg>}</div><strong>{t.title}</strong></Button>)}</div>}
+      {panel === 'library' && <div className="modal-content"><Field label="Level"><input value={project.level} onChange={e => commit({ ...project, level: e.target.value })}/></Field><Field label="Topic"><input value={project.topic} onChange={e => commit({ ...project, topic: e.target.value })}/></Field><Field label="Expression"><input value={project.expression} onChange={e => commit({ ...project, expression: e.target.value })}/></Field><Field label="Common mistake"><textarea value={project.mistake} onChange={e => commit({ ...project, mistake: e.target.value })}/></Field><Field label="Correction"><textarea value={project.remediation} onChange={e => commit({ ...project, remediation: e.target.value })}/></Field><Button onClick={() => load({ ...project, scenes: buildScenes(project) })}><Sparkles size={16}/>Build story</Button></div>}
+      {panel === 'audio' && <div className="modal-content"><label className="audio-upload"><AudioLines size={32}/><strong>{audioName || 'Add a voice-over or music track'}</strong><input type="file" accept="audio/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; setAudioUrl(URL.createObjectURL(f)); setAudioName(f.name); setMuted(false); }}/></label><Field label="Volume" extra={`${volume}%`}><input type="range" min="0" max="100" value={volume} onChange={e => setVolume(Number(e.target.value))}/></Field><Button variant="outline" onClick={() => setMuted(m => !m)}>{muted ? <VolumeX size={16}/> : <Volume2 size={16}/>} {muted ? 'Enable audio' : 'Mute audio'}</Button></div>}
+      {panel === 'settings' && <div className="modal-content"><Field label="Video format"><select value={project.format} onChange={e => commit({ ...project, format: e.target.value as StudioProject['format'] })}><option value="portrait">9:16 · Portrait</option><option value="landscape">16:9 · Landscape</option></select></Field><Button variant="outline" onClick={() => setSafeZones(v => !v)}><ShieldCheck size={16}/>{safeZones ? 'Hide safe zones' : 'Show safe zones'}</Button></div>}
+      {panel === 'export' && <div className="modal-content"><div className="export-summary"><Film size={26}/><div><strong>{project.name}</strong><span>{ratio} · {timecode(duration)} · {project.scenes.length} scenes</span></div></div><Button onClick={exportProject}><Download size={16}/>Download editable project</Button><p className="export-note">Video rendering is not connected. Editable project export is available.</p><Button variant="outline" onClick={() => file.current?.click()}><FolderOpen size={16}/>Import project</Button></div>}
+    </DialogContent></Dialog>
+    {notice && <div className="toast" role="status"><Check size={16}/>{notice}<IconButton icon={X} label="Dismiss notification" onClick={() => setNotice('')}/></div>}
+  </div>;
 }
