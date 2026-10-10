@@ -21,6 +21,77 @@ export interface MathPlotData {
 
 export type MathVisualModel = 'curve' | 'tangent' | 'wave' | 'exponential' | 'integral' | 'number-line' | 'none';
 
+/**
+ * Extracts a plottable variable-dependent math expression f(x) from any input.
+ * Handles equations like `e^(a+b) = e^a + e^b` -> `e^x`, `y = 2x + 1` -> `2*x + 1`,
+ * inequalities, arrows, Arabic text, and converts implicit mult (`2x` -> `2*x`, `e^x` -> `exp(x)`).
+ */
+export function extractPlottableExpression(raw: string): string {
+  if (!raw) return 'x^2';
+  let expr = raw.trim();
+
+  // Strip function definitions like f(x) = ..., y = ..., (C_f): y = ...
+  expr = expr.replace(/^f′?\(x\)\s*[:=]\s*/i, '');
+  expr = expr.replace(/^f'\(x\)\s*[:=]\s*/i, '');
+  expr = expr.replace(/^\(?C_?f?\)?\s*[:=]\s*y\s*=\s*/i, '');
+  expr = expr.replace(/^y\s*=\s*/i, '');
+
+  // If it's an equation or identity like LHS = RHS, pick the variable side
+  if (expr.includes('=')) {
+    const parts = expr.split('=');
+    const lhs = parts[0]?.trim() || '';
+    const rhs = parts[1]?.trim() || '';
+    if (/[a-zA-Z]/.test(lhs)) {
+      expr = lhs;
+    } else if (/[a-zA-Z]/.test(rhs)) {
+      expr = rhs;
+    }
+  }
+
+  // Handle common exponential and logarithm patterns
+  if (/e\s*\^\s*\([^)]+\)/i.test(expr) || /e\s*\^\s*[a-zA-Z0-9]/i.test(expr)) {
+    // If it's an exponential function
+    return 'exp(x)';
+  }
+
+  if (/ln\s*\(|log\s*\(/i.test(expr)) {
+    return 'ln(x)';
+  }
+
+  if (/sin\s*\(/i.test(expr)) {
+    return 'sin(x)';
+  }
+
+  if (/cos\s*\(/i.test(expr)) {
+    return 'cos(x)';
+  }
+
+  // Map other single letters to x (like t, u, a, b)
+  if (!/\bx\b/i.test(expr) && /[a-wyzA-WYZ]/.test(expr)) {
+    expr = expr.replace(/\b[a-wyzA-WYZ]\b/g, 'x');
+  }
+
+  // Convert exponential syntax: e^x or e^(x) to exp(x)
+  expr = expr.replace(/e\s*\^\s*\(([^)]+)\)/gi, 'exp($1)');
+  expr = expr.replace(/e\s*\^\s*([a-zA-Z0-9.]+)/gi, 'exp($1)');
+
+  // Convert implicit multiplication: 2x -> 2*x, 3(x) -> 3*(x), (x+1)(x-1) -> (x+1)*(x-1)
+  expr = expr.replace(/([0-9])([a-zA-Z(])/g, '$1*$2');
+  expr = expr.replace(/\)([\w(])/g, ')*$1');
+
+  // Verify whether the expression evaluates cleanly
+  const testVal = evaluateMathExpression(expr, 1);
+  if (testVal.error || isNaN(testVal.value)) {
+    if (/exp|e\^/i.test(raw)) return 'exp(x)';
+    if (/ln|log/i.test(raw)) return 'ln(x)';
+    if (/sin/i.test(raw)) return 'sin(x)';
+    if (/cos/i.test(raw)) return 'cos(x)';
+    return 'x^2';
+  }
+
+  return expr;
+}
+
 type TokenType = 'NUMBER' | 'VAR' | 'OP' | 'LPAREN' | 'RPAREN' | 'FUNC';
 
 interface Token {

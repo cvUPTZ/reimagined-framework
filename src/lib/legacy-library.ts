@@ -214,17 +214,55 @@ function projectFrom(entry: LegacyEntry, scenes: Scene[], extra: Partial<StudioP
   };
 }
 
+function inferVisualFromMath(raw: string): VisualModelType {
+  if (!raw) return 'curve';
+  if (/e\^|exp\(/i.test(raw)) return 'exponential';
+  if (/sin|cos|tan/i.test(raw)) return 'wave';
+  if (/∫|integral|مساحة/i.test(raw)) return 'integral';
+  if (/f'|مشتق|مماس|tangent/i.test(raw)) return 'tangent';
+  return 'curve';
+}
+
 function mistakeScenes(b: LegacyMistake, hook: string, ch?: [string, string], vis?: LegacyVisual): SceneInit[] {
   const model = vis?.m ?? b.vis?.m;
+  const inferredFallback = inferVisualFromMath((b.expr || '') + ' ' + (b.mistake || '') + ' ' + (b.topic || ''));
   const out: SceneInit[] = [
-    { title: 'الخطاف', body: hook, kind: 'hook', phase: 'Hook', ...(model ? { model, params: vis ?? b.vis, stage: 'predict' as const } : {}), expression: b.mistake },
-    { title: 'إجابة التلميذ', body: b.mistake, kind: 'explain', phase: 'Diagnosis', ...(model ? { model, params: vis ?? b.vis, stage: 'observe' as const } : {}), expression: b.mistake },
-    { title: 'السبب الحقيقي', body: b.cause, kind: 'explain', phase: 'Cause', ...(model ? { model, params: vis ?? b.vis, stage: 'move' as const } : {}), expression: b.expr || b.mistake },
-    { title: 'التصحيح', body: b.fix, kind: 'rule', phase: 'Solution', ...(model ? { model, params: vis ?? b.vis, stage: 'general' as const } : {}), expression: b.fix },
+    {
+      title: 'الخطاف',
+      body: hook,
+      kind: 'hook',
+      phase: 'Hook',
+      ...(model ? { model, params: vis ?? b.vis, stage: 'predict' as const } : { model: inferredFallback }),
+      expression: b.mistake,
+    },
+    {
+      title: 'إجابة التلميذ',
+      body: `${b.mistake}\n${b.cause || 'فخ شائع يقع فيه الكثير من التلاميذ في البكالوريا'}`,
+      kind: 'explain',
+      phase: 'Diagnosis',
+      ...(model ? { model, params: vis ?? b.vis, stage: 'observe' as const } : { model: inferredFallback }),
+      expression: b.mistake,
+    },
+    {
+      title: 'السبب الحقيقي',
+      body: b.cause,
+      kind: 'explain',
+      phase: 'Cause',
+      ...(model ? { model, params: vis ?? b.vis, stage: 'move' as const } : { model: inferredFallback }),
+      expression: b.expr || b.mistake,
+    },
+    {
+      title: 'التصحيح',
+      body: b.fix,
+      kind: 'rule',
+      phase: 'Solution',
+      ...(model ? { model, params: vis ?? b.vis, stage: 'general' as const } : { model: inferredFallback }),
+      expression: b.fix,
+    },
   ];
   if (ch) {
-    out.push({ title: 'تحدّي', body: ch[0], kind: 'explain', phase: 'Challenge', ...(model ? { model, params: vis ?? b.vis, stage: 'predict' as const } : {}) });
-    out.push({ title: 'الجواب', body: ch[1], kind: 'rule', phase: 'Challenge', ...(model ? { model, params: vis ?? b.vis, stage: 'general' as const } : {}) });
+    out.push({ title: 'تحدّي', body: ch[0], kind: 'explain', phase: 'Challenge', ...(model ? { model, params: vis ?? b.vis, stage: 'predict' as const } : { model: inferredFallback }) });
+    out.push({ title: 'الجواب', body: ch[1], kind: 'rule', phase: 'Challenge', ...(model ? { model, params: vis ?? b.vis, stage: 'general' as const } : { model: inferredFallback }) });
   }
   out.push({ title: 'الدعوة للعمل', body: CTA, kind: 'cta', phase: 'End card' });
   return out;

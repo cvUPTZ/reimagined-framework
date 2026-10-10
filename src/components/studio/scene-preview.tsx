@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { type Scene, type StudioProject } from '@/lib/studio';
 import { phaseOf } from '@/lib/reference-project';
 import { sceneMotion } from '@/lib/project-file';
-import { evaluateMathExpression, computeSlope, generatePlotData } from '@/lib/math-engine';
+import { evaluateMathExpression, computeSlope, generatePlotData, extractPlottableExpression } from '@/lib/math-engine';
 import { hasLegacyRenderer, renderLegacyVisual, type VisualParams, type VisualStage } from '@/lib/legacy-visuals';
 import { TELEGRAM_QR_SRC, TELEGRAM_BOT_HANDLE, TELEGRAM_BOT_URL } from '@/assets/telegram-qr';
 
@@ -145,16 +145,14 @@ export function ScenePreview({
 
   // Math expression normalization and plotting bounds
   const rawExpr = scene.expression ?? project.expression ?? 'x^2';
-  const cleanExpr = rawExpr
-    .replace(/^f\(x\)\s*=\s*/i, '')
-    .replace(/^f′\(x\)\s*=\s*/i, '')
-    .replace(/^f'\(x\)\s*=\s*/i, '')
-    .trim() || 'x^2';
+  const cleanExpr = extractPlottableExpression(rawExpr);
+  const isExp = visual === 'exponential' || cleanExpr.startsWith('exp(');
+  const isLn = cleanExpr.startsWith('ln(');
 
-  const plotMinX = visual === 'wave' ? -3.14 : -3;
-  const plotMaxX = visual === 'wave' ? 3.14 : 3;
-  const plotMinY = visual === 'wave' ? -1.6 : visual === 'exponential' ? -0.5 : -2.5;
-  const plotMaxY = visual === 'wave' ? 1.6 : visual === 'exponential' ? 12 : 7.5;
+  const plotMinX = visual === 'wave' ? -3.14 : isLn ? 0.05 : -3;
+  const plotMaxX = visual === 'wave' ? 3.14 : isLn ? 4.5 : 3;
+  const plotMinY = visual === 'wave' ? -1.6 : isExp ? -0.5 : isLn ? -3.5 : -2.5;
+  const plotMaxY = visual === 'wave' ? 1.6 : isExp ? 12 : isLn ? 3.5 : 7.5;
 
   // 1. Static/Base Curve Plot Data
   const basePlotData = useMemo(() => {
@@ -680,13 +678,15 @@ export function ScenePreview({
                   <text x="0" y="2" textAnchor="middle" className="art-function" fontSize="10" fontWeight="bold">
                     {visual === 'wave'
                       ? 'f(x) = sin(x)'
-                      : visual === 'exponential'
+                      : isExp
                         ? 'f(x) = eˣ'
-                        : visual === 'integral'
-                          ? '∫[a,b] f(x)dx'
-                          : visual === 'tangent'
-                            ? `(T): y = ${slope.toFixed(2)}x + ...`
-                            : `(C_f) : y = ${cleanExpr}`}
+                        : isLn
+                          ? 'f(x) = ln(x)'
+                          : visual === 'integral'
+                            ? '∫[a,b] f(x)dx'
+                            : visual === 'tangent'
+                              ? `(T): y = ${slope.toFixed(2)}x + ...`
+                              : `(C_f) : y = ${cleanExpr.replace(/exp\(x\)/g, 'eˣ').replace(/\*/g, '')}`}
                   </text>
                 </g>
               </g>
@@ -694,12 +694,19 @@ export function ScenePreview({
           </g>
         )}
 
-        {/* Lower Mathematical Formula Display */}
-        {(scene.showExpression ?? true) && (scene.expression ?? project.expression) && (
-          <text x={width / 2} y={expressionY} textAnchor="middle" className="art-expression" fill="var(--foreground)">
-            {scene.expression ?? project.expression}
-          </text>
-        )}
+        {/* Lower Mathematical Formula Display (Only when distinct from body and not suppressed) */}
+        {(scene.showExpression ?? true) && (() => {
+          const expr = (scene.expression ?? project.expression ?? '').trim();
+          if (!expr) return null;
+          // Avoid duplicate math rendering if the exact formula is already in the scene body text
+          const isDupOfBody = lines.some(l => l.trim().toLowerCase() === expr.toLowerCase());
+          if (isDupOfBody) return null;
+          return (
+            <text x={width / 2} y={expressionY} textAnchor="middle" className="art-expression" fill="var(--foreground)">
+              {expr}
+            </text>
+          );
+        })()}
 
         {/* 3B1B Final Scene / CTA Big Central Telegram QR Code Card */}
         {((scene.showQrCta ?? (scene.kind === 'cta' || scene.phase === 'End card')) && (
