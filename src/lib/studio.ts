@@ -62,13 +62,21 @@ export interface AudioTrackConfig {
 }
 
 export const defaultBrandKits: Record<string, BrandKit> = {
+  threeblueonebrown: {
+    name: '3Blue1Brown Classic',
+    brandName: '3B1B × QED',
+    tagline: 'البصيرة والبرهان الهندسي',
+    footnote: 'جوهر الرياضيات البصرية · ∎',
+    accentColor: '#38bdf8',
+    logoStyle: 'circle',
+  },
   qed: {
     name: 'QED Classic',
-    brandName: 'QED',
-    tagline: 'A LITTLE CLARITY. A BIG DIFFERENCE.',
-    footnote: 'MOMENTS OF UNDERSTANDING',
-    accentColor: 'oklch(0.845 0.135 153)',
-    logoStyle: 'square',
+    brandName: '3B1B × QED',
+    tagline: 'البصيرة والبرهان الهندسي',
+    footnote: 'MOMENTS OF UNDERSTANDING · ∎',
+    accentColor: '#38bdf8',
+    logoStyle: 'circle',
   },
   bac: {
     name: 'BAC Excellence',
@@ -126,7 +134,7 @@ export const defaultProject: StudioProject = {
   expression: "(3 + 2) × 4",
   remediation: "الأقواس أولاً، ثم نكمل العملية بالترتيب.",
   cta: "جرّب التشخيص المجاني مع QED",
-  brandKit: defaultBrandKits.bac,
+  brandKit: defaultBrandKits.threeblueonebrown,
   scenes: [
     { id: "s1", title: "الخطاف البصري", label: "01", body: "خطأ صغير في الترتيب\nيضيّع نقطة كاملة في البكالوريا!", duration: 3, kind: "hook", phase: "Hook", animation: "Draw in", visual: "curve", fontFamily: "Tajawal", fontSize: 40 },
     { id: "s2", title: "الفخ الشائع", label: "02", body: "(3 + 2) × 4\nالنتيجة ليست 11!", duration: 4, kind: "explain", phase: "Diagnosis", animation: "Fade", visual: "number-line", fontFamily: "Tajawal", fontSize: 40 },

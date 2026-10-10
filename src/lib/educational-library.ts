@@ -509,7 +509,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
     expression: lesson.expression,
     remediation: lesson.remediation,
     cta: lesson.cta,
-    brandKit: defaultBrandKits.bac,
+    brandKit: defaultBrandKits.threeblueonebrown,
     scenes,
   };
 }

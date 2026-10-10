@@ -19,8 +19,15 @@ export interface LegacyVisualInput {
   duration: number;
 }
 
-// colours of the original palette (r,g,b)
-const TE = '46,230,197', VI = '167,139,250', AM = '255,176,32', RD = '255,77,94', WH = '240,244,250', BL = '77,163,255', PK = '255,122,198';
+// 3Blue1Brown vibrant luminous palette (r,g,b)
+const TE = '56,189,248'; // 3B1B Cyan / Sky Blue
+const VI = '129,140,248'; // 3B1B Indigo / Purple
+const AM = '251,191,36'; // 3B1B Gold / Amber
+const RD = '248,113,113'; // 3B1B Soft Coral / Red
+const WH = '248,250,252'; // Crisp White
+const BL = '96,165,250'; // Bright Blue
+const PK = '244,114,182'; // Rose Pink
+const EM = '52,211,153'; // Emerald Green
 
 // local box (the host scales/translates it): 390 wide, ~400 tall, same proportions as the canvas version
 const W = 390, CX = 195, BW = 360, BH = 400, CY = 200;
@@ -48,15 +55,81 @@ function makeKit(al: number): Kit {
   const hasAr = (s: string) => /[\u0600-\u06FF]/.test(s);
   return {
     els,
-    box: (x, y, w, h, c0, fa, sa, lw = 1.5) => { els.push(<rect key={n++} x={x} y={y} width={w} height={h} fill={fa ? C(c0, fa) : 'none'} stroke={sa ? C(c0, sa) : 'none'} strokeWidth={lw} />); },
-    dot: (x, y, r, c0, q) => { els.push(<circle key={n++} cx={x} cy={y} r={r} fill={C(c0, q)} />); },
-    ln: (x1, y1, x2, y2, c0, q, lw = 1.5) => { els.push(<line key={n++} x1={x1} y1={y1} x2={x2} y2={y2} stroke={C(c0, q)} strokeWidth={lw} strokeLinecap="round" />); },
-    tx: (s, x, y, size, c0, q) => {
+    box: (x, y, w, h, c0, fa, sa, lw = 1.8) => {
       els.push(
-        <text key={n++} x={x} y={y} fontSize={size} fontWeight={800} fontFamily="Tajawal, Cairo, sans-serif" textAnchor="middle" dominantBaseline="central" fill={C(c0, q)} stroke="rgba(8,12,18,0.85)" strokeWidth={3} paintOrder="stroke" direction={hasAr(s) ? 'rtl' : 'ltr'}>{s}</text>,
+        <rect
+          key={n++}
+          x={x}
+          y={y}
+          width={w}
+          height={h}
+          rx={6}
+          fill={fa ? C(c0, fa) : 'none'}
+          stroke={sa ? C(c0, sa) : 'none'}
+          strokeWidth={lw}
+        />,
       );
     },
-    poly: (pts, c0, fa, sa, lw = 1.5) => { els.push(<polygon key={n++} points={pts.map(p => p.join(',')).join(' ')} fill={fa ? C(c0, fa) : 'none'} stroke={sa ? C(c0, sa) : 'none'} strokeWidth={lw} strokeLinejoin="round" />); },
+    dot: (x, y, r, c0, q) => {
+      els.push(
+        <circle
+          key={n++}
+          cx={x}
+          cy={y}
+          r={r}
+          fill={C(c0, q)}
+          stroke={C(c0, Math.min(1, q * 1.2))}
+          strokeWidth={1.5}
+        />,
+      );
+    },
+    ln: (x1, y1, x2, y2, c0, q, lw = 2) => {
+      els.push(
+        <line
+          key={n++}
+          x1={x1}
+          y1={y1}
+          x2={x2}
+          y2={y2}
+          stroke={C(c0, q)}
+          strokeWidth={lw}
+          strokeLinecap="round"
+        />,
+      );
+    },
+    tx: (s, x, y, size, c0, q) => {
+      els.push(
+        <text
+          key={n++}
+          x={x}
+          y={y}
+          fontSize={size}
+          fontWeight={800}
+          fontFamily="Tajawal, Cairo, sans-serif"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={C(c0, q)}
+          stroke="rgba(8,12,18,0.92)"
+          strokeWidth={3.5}
+          paintOrder="stroke"
+          direction={hasAr(s) ? 'rtl' : 'ltr'}
+        >
+          {s}
+        </text>,
+      );
+    },
+    poly: (pts, c0, fa, sa, lw = 2) => {
+      els.push(
+        <polygon
+          key={n++}
+          points={pts.map(p => p.join(',')).join(' ')}
+          fill={fa ? C(c0, fa) : 'none'}
+          stroke={sa ? C(c0, sa) : 'none'}
+          strokeWidth={lw}
+          strokeLinejoin="round"
+        />,
+      );
+    },
   };
 }
 
@@ -272,10 +345,72 @@ export function renderLegacyVisual(input: LegacyVisualInput): ReactNode | null {
   const res = model({ kit, a, b, c, params: v, st, p, pulse, u });
   const bad = res.bad;
   return (
-    <g data-legacy-model={input.model}>
+    <g data-legacy-model={input.model} className="legacy-3b1b-visual">
+      {/* 3B1B Luminous Model Backdrop Grid Frame */}
+      <rect
+        x={CX - BW / 2}
+        y={TOP - 10}
+        width={BW}
+        height={MH + 60}
+        rx={12}
+        fill="rgba(15, 23, 42, 0.45)"
+        stroke="rgba(56, 189, 248, 0.2)"
+        strokeWidth={1.2}
+      />
       {kit.els}
-      {res.readout ? <text x={CX} y={6} fontSize={22} fontWeight={800} fontFamily="Tajawal, Cairo, sans-serif" textAnchor="middle" fill={`rgba(${bad ? RD : WH},${al})`} stroke="rgba(8,12,18,0.85)" strokeWidth={4} paintOrder="stroke">{res.readout}</text> : null}
-      {res.formula && st === 'general' ? <text x={CX} y={TOP + MH + 52} fontSize={13} fontWeight={700} fontFamily="Tajawal, Cairo, sans-serif" textAnchor="middle" fill={`rgba(${AM},${al})`}>{res.formula}</text> : null}
+      {res.readout ? (
+        <g transform={`translate(${CX}, 14)`}>
+          <rect
+            x={-160}
+            y={-18}
+            width={320}
+            height={34}
+            rx={8}
+            fill="rgba(8, 12, 20, 0.88)"
+            stroke={bad ? 'rgba(248, 113, 113, 0.85)' : 'rgba(56, 189, 248, 0.75)'}
+            strokeWidth={1.5}
+          />
+          <text
+            x={0}
+            y={5}
+            fontSize={20}
+            fontWeight={800}
+            fontFamily="Tajawal, Cairo, sans-serif"
+            textAnchor="middle"
+            fill={`rgba(${bad ? RD : WH},${al})`}
+            stroke="rgba(8,12,18,0.9)"
+            strokeWidth={3}
+            paintOrder="stroke"
+          >
+            {res.readout}
+          </text>
+        </g>
+      ) : null}
+      {res.formula && st === 'general' ? (
+        <g transform={`translate(${CX}, ${TOP + MH + 50})`}>
+          <rect
+            x={-165}
+            y={-14}
+            width={330}
+            height={28}
+            rx={6}
+            fill="rgba(8, 12, 20, 0.85)"
+            stroke="rgba(251, 191, 36, 0.75)"
+            strokeWidth={1.2}
+          />
+          <text
+            x={0}
+            y={4}
+            fontSize={13.5}
+            fontWeight={800}
+            fontFamily="Tajawal, Cairo, sans-serif"
+            textAnchor="middle"
+            fill={`rgba(${AM},${al})`}
+          >
+            {res.formula}
+          </text>
+        </g>
+      ) : null}
     </g>
   );
 }

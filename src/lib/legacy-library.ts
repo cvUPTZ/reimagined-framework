@@ -126,12 +126,34 @@ export function legacyLevels(source: LegacySource): string[] {
  * port coverage can be reported (see unsupportedLegacyModels).
  */
 const MODEL_MAP: Record<string, VisualModelType> = {
-  tangent: 'tangent', secant: 'tangent', zoom: 'tangent', limit: 'curve', asym: 'curve', variation: 'curve', convex: 'curve',
+  // Calculus, Tangents & Derivatives
+  tangent: 'tangent', secant: 'tangent', zoom: 'tangent', chain: 'tangent', flip: 'tangent',
+  
+  // Functions, Curves, Limits & Asymptotes
+  limit: 'curve', asym: 'curve', variation: 'curve', convex: 'curve', quad: 'curve',
+  func: 'curve', ivt: 'curve', squeeze: 'curve', sqrt: 'curve', diffsq: 'curve',
+  inverse: 'curve', disc: 'curve', linear: 'curve', system: 'curve',
+  
+  // Integrals, Areas & Geometry
   area: 'integral', riemann: 'integral', ftc: 'integral', signarea: 'integral', revolve: 'integral',
-  trig: 'wave', sinx: 'wave', clock: 'wave',
-  expk: 'exponential', growth: 'exponential', logadd: 'exponential',
-  numline: 'number-line', stair: 'number-line', gap: 'number-line', bounds: 'number-line', ivt: 'curve', squeeze: 'curve',
-  func: 'curve', seq: 'number-line',
+  volume: 'integral',
+  
+  // Trigonometry, Periodic Waves & Complex Numbers
+  trig: 'wave', sinx: 'wave', clock: 'wave', crot: 'wave', carg: 'wave', cplx: 'wave',
+  
+  // Exponentials, Growth, Logarithms & Powers
+  expk: 'exponential', growth: 'exponential', logadd: 'exponential', powers: 'exponential',
+  
+  // Number line, Arithmetic, Sequences, Probability & Statistics
+  numline: 'number-line', stair: 'number-line', gap: 'number-line', bounds: 'number-line',
+  seq: 'number-line', sieve: 'number-line', off: 'number-line', pct: 'number-line',
+  domino: 'number-line', binom: 'number-line', parity: 'number-line', pascal: 'number-line',
+  mean: 'number-line', prob: 'number-line', cond: 'number-line', tree: 'number-line',
+  num: 'number-line',
+  
+  // Geometry & Triangles
+  thales: 'tangent', dist: 'curve', geo: 'curve', triangle: 'curve', euclid: 'number-line',
+  pythag: 'tangent', scale: 'tangent', inscr: 'wave', rtri: 'tangent',
 };
 
 export const mapLegacyModel = (m: string): VisualModelType => MODEL_MAP[m] ?? 'none';
@@ -149,9 +171,9 @@ const secondsFor = (text: string, min = 3, max = 9) => Math.max(min, Math.min(ma
 
 type SceneInit = { title: string; body: string; kind: Scene['kind']; phase: string; model?: string; params?: LegacyVisual | undefined; stage?: VisualStage; narration?: string; expression?: string; legacy?: Record<string, unknown>; animation?: Scene['animation'] };
 
-function buildScenes(inits: SceneInit[]): Scene[] {
+function buildScenes(inits: SceneInit[], fallbackVisual: VisualModelType = 'curve'): Scene[] {
   return inits.map((s, n) => {
-    const visual = s.model ? mapLegacyModel(s.model) : 'none';
+    const visual = s.model ? mapLegacyModel(s.model) : fallbackVisual;
     const scene: Scene = {
       id: makeId(),
       title: s.title,
@@ -185,7 +207,7 @@ function projectFrom(entry: LegacyEntry, scenes: Scene[], extra: Partial<StudioP
     expression: '',
     remediation: '',
     cta: CTA,
-    brandKit: defaultBrandKits['qed'] as NonNullable<StudioProject['brandKit']>,
+    brandKit: defaultBrandKits['threeblueonebrown'] as NonNullable<StudioProject['brandKit']>,
     scenes,
     legacy: { source: entry.source, legacyId: entry.id },
     ...extra,
@@ -197,12 +219,12 @@ function mistakeScenes(b: LegacyMistake, hook: string, ch?: [string, string], vi
   const out: SceneInit[] = [
     { title: 'الخطاف', body: hook, kind: 'hook', phase: 'Hook', ...(model ? { model, params: vis ?? b.vis, stage: 'predict' as const } : {}), expression: b.mistake },
     { title: 'إجابة التلميذ', body: b.mistake, kind: 'explain', phase: 'Diagnosis', ...(model ? { model, params: vis ?? b.vis, stage: 'observe' as const } : {}), expression: b.mistake },
-    { title: 'السبب الحقيقي', body: b.cause, kind: 'explain', phase: 'Cause' },
-    { title: 'التصحيح', body: b.fix, kind: 'rule', phase: 'Solution', ...(model ? { model, params: vis ?? b.vis, stage: 'general' as const } : {}) },
+    { title: 'السبب الحقيقي', body: b.cause, kind: 'explain', phase: 'Cause', ...(model ? { model, params: vis ?? b.vis, stage: 'move' as const } : {}), expression: b.expr || b.mistake },
+    { title: 'التصحيح', body: b.fix, kind: 'rule', phase: 'Solution', ...(model ? { model, params: vis ?? b.vis, stage: 'general' as const } : {}), expression: b.fix },
   ];
   if (ch) {
-    out.push({ title: 'تحدّي', body: ch[0], kind: 'explain', phase: 'Challenge' });
-    out.push({ title: 'الجواب', body: ch[1], kind: 'rule', phase: 'Challenge' });
+    out.push({ title: 'تحدّي', body: ch[0], kind: 'explain', phase: 'Challenge', ...(model ? { model, params: vis ?? b.vis, stage: 'predict' as const } : {}) });
+    out.push({ title: 'الجواب', body: ch[1], kind: 'rule', phase: 'Challenge', ...(model ? { model, params: vis ?? b.vis, stage: 'general' as const } : {}) });
   }
   out.push({ title: 'الدعوة للعمل', body: CTA, kind: 'cta', phase: 'End card' });
   return out;
@@ -243,14 +265,14 @@ export function legacyToProject(entry: LegacyEntry): StudioProject | null {
       if (!x) return null;
       const answer = Array.isArray(x.answer) ? x.answer.join('\n') : x.answer ?? '';
       const inits: SceneInit[] = [
-        { title: 'الخطاف', body: x.hook, kind: 'hook', phase: 'Hook' },
-        { title: 'نص التمرين', body: [x.stmt, x.ask].filter(Boolean).join('\n'), kind: 'explain', phase: 'Statement', ...(x.say0 ? { narration: x.say0 } : {}) },
+        { title: 'الخطاف', body: x.hook, kind: 'hook', phase: 'Hook', model: x.ty },
+        { title: 'نص التمرين', body: [x.stmt, x.ask].filter(Boolean).join('\n'), kind: 'explain', phase: 'Statement', model: x.ty, ...(x.say0 ? { narration: x.say0 } : {}) },
         ...x.steps.map((s): SceneInit => ({
-          title: s.title, body: s.lines.join('\n'), kind: 'explain', phase: 'Step', narration: s.say,
+          title: s.title, body: s.lines.join('\n'), kind: 'explain', phase: 'Step', narration: s.say, model: x.ty,
           legacy: { solveDiagram: s.d ?? null, solveType: x.ty },
         })),
       ];
-      if (answer) inits.push({ title: 'الجواب النهائي', body: answer, kind: 'rule', phase: 'Solution', ...(x.sayEnd ? { narration: x.sayEnd } : {}) });
+      if (answer) inits.push({ title: 'الجواب النهائي', body: answer, kind: 'rule', phase: 'Solution', model: x.ty, ...(x.sayEnd ? { narration: x.sayEnd } : {}) });
       if (x.ch) inits.push({ title: 'تحدّي', body: [x.chAsk, x.ch[0]].filter(Boolean).join('\n'), kind: 'explain', phase: 'Challenge' }, { title: 'الجواب', body: x.ch[1], kind: 'rule', phase: 'Challenge' });
       inits.push({ title: 'الدعوة للعمل', body: CTA, kind: 'cta', phase: 'End card' });
       return projectFrom(entry, buildScenes(inits), { remediation: answer });
