@@ -22,7 +22,6 @@ import {
   Play,
   Plus,
   Redo2,
-  RotateCcw,
   Scissors,
   Settings2,
   ShieldCheck,
@@ -33,7 +32,7 @@ import {
   Upload,
   Volume2,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   buildScenes,
@@ -200,7 +199,7 @@ function Index() {
             </div>
           </div>
           <div className="stage-canvas-area">
-            <div className={`video-frame ${project.format}`} style={{ "--preview-scale": zoom / 74 } as React.CSSProperties}>
+            <div className={`video-frame ${project.format}`} style={{ "--preview-scale": zoom / 74 } as CSSProperties}>
               <div className="frame-grid" />
               {safeZones && <div className="safe-zone"><span>منطقة آمنة</span></div>}
               <div className={`scene-visual kind-${scene?.kind ?? "hook"}`}>
@@ -243,7 +242,7 @@ function Index() {
   );
 }
 
-function RailButton({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void }) {
+function RailButton({ icon, label, active, onClick }: { icon: ReactNode; label: string; active?: boolean; onClick?: () => void }) {
   return <button className={`rail-button ${active ? "active" : ""}`} aria-pressed={active} onClick={onClick}><span>{icon}</span><small>{label}</small></button>;
 }
 
@@ -254,11 +253,11 @@ function SceneCard({ scene, active, onClick, onMove }: { scene: Scene; active: b
   </article>;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="field"><span>{label}</span>{children}</label>;
 }
 
-function PropertiesPanel({ tab, project, scene, onProject, onScene, onBuild, onExport, onImport, safeZones }: { tab: StudioTab; project: StudioProject; scene?: Scene; onProject: (patch: Partial<StudioProject>) => void; onScene: (patch: Partial<Scene>) => void; onBuild: () => void; onExport: () => void; onImport: () => void; safeZones: boolean }) {
+function PropertiesPanel({ tab, project, scene, onProject, onScene, onBuild, onExport, onImport, safeZones }: { tab: StudioTab; project: StudioProject; scene: Scene | undefined; onProject: (patch: Partial<StudioProject>) => void; onScene: (patch: Partial<Scene>) => void; onBuild: () => void; onExport: () => void; onImport: () => void; safeZones: boolean }) {
   const titles = { ideas: ["مختبر الأفكار", "حوّل فكرة رياضية إلى قصة قصيرة"], scenes: ["خصائص المشهد", `المشهد ${scene?.label ?? "—"} · ${scene?.title ?? ""}`], audio: ["الصوت والتعليق", "رتّب صوتك وموسيقاك"], export: ["تصدير الفيديو", "افحص مشروعك قبل الإخراج"] } as const;
   return <aside className="properties">
     <div className="properties-heading"><div><h2>{titles[tab][0]}</h2><p>{titles[tab][1]}</p></div><Button variant="icon" size="icon" aria-label="إعدادات اللوحة"><SlidersHorizontal size={17} /></Button></div>
