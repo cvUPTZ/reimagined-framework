@@ -1,4 +1,4 @@
-import { makeId, type Scene, type StudioProject } from './studio';
+import { makeId, defaultBrandKits, type Scene, type StudioProject } from './studio';
 import type { MathVisualModel } from './math-engine';
 
 export interface EducationalLesson {
@@ -167,9 +167,10 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       duration: 3.5,
       kind: 'hook',
       phase: 'Hook',
-      animation: 'Fade',
+      animation: 'Draw in',
       visual: lesson.visualModel,
       expression: lesson.expression,
+      fontFamily: 'Tajawal',
       fontSize: 40,
     },
     {
@@ -183,6 +184,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       animation: 'Slide up',
       visual: lesson.visualModel,
       expression: lesson.expression,
+      fontFamily: 'Tajawal',
       fontSize: 40,
     },
     {
@@ -193,9 +195,10 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       duration: 4.5,
       kind: 'explain',
       phase: 'Intuition',
-      animation: 'Draw in',
+      animation: 'Fade',
       visual: lesson.visualModel,
       expression: lesson.expression,
+      fontFamily: 'Tajawal',
       fontSize: 40,
     },
     {
@@ -209,6 +212,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       animation: 'Slide left',
       visual: lesson.visualModel,
       expression: lesson.expression,
+      fontFamily: 'Tajawal',
       fontSize: 38,
     },
     {
@@ -222,6 +226,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       animation: 'Fade',
       visual: lesson.visualModel,
       expression: lesson.expression,
+      fontFamily: 'Tajawal',
       fontSize: 40,
     },
     {
@@ -235,6 +240,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       animation: 'Zoom in',
       visual: 'none',
       expression: lesson.expression,
+      fontFamily: 'Tajawal',
       fontSize: 42,
     },
   ];
@@ -249,6 +255,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
     expression: lesson.expression,
     remediation: lesson.remediation,
     cta: lesson.cta,
+    brandKit: defaultBrandKits.bac,
     scenes,
   };
 }

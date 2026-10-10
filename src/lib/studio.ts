@@ -118,7 +118,7 @@ export const makeId = () => Math.random().toString(36).slice(2, 10);
 
 export const defaultProject: StudioProject = {
   id: "qed-demo",
-  name: "أولوية العمليات",
+  name: "أولوية العمليات الحسابية",
   format: "portrait",
   topic: "أولوية العمليات",
   level: "BAC 2026",
@@ -126,12 +126,13 @@ export const defaultProject: StudioProject = {
   expression: "(3 + 2) × 4",
   remediation: "الأقواس أولاً، ثم نكمل العملية بالترتيب.",
   cta: "جرّب التشخيص المجاني مع QED",
+  brandKit: defaultBrandKits.bac,
   scenes: [
-    { id: "s1", title: "الخطاف", label: "01", body: "خطأ صغير\nيضيع نقطة كاملة", duration: 3, kind: "hook" },
-    { id: "s2", title: "المشكلة", label: "02", body: "(3 + 2) × 4\nليس 11", duration: 4, kind: "explain" },
-    { id: "s3", title: "التصحيح", label: "03", body: "الأقواس أولاً\n5 × 4 = 20", duration: 5, kind: "rule" },
-    { id: "s4", title: "الخلاصة", label: "04", body: "القوس كتلة واحدة", duration: 3, kind: "rule" },
-    { id: "s5", title: "الدعوة", label: "05", body: "اختبر فهمك الآن", duration: 3, kind: "cta" },
+    { id: "s1", title: "الخطاف البصري", label: "01", body: "خطأ صغير في الترتيب\nيضيّع نقطة كاملة في البكالوريا!", duration: 3, kind: "hook", phase: "Hook", animation: "Draw in", visual: "curve", fontFamily: "Tajawal", fontSize: 40 },
+    { id: "s2", title: "الفخ الشائع", label: "02", body: "(3 + 2) × 4\nالنتيجة ليست 11!", duration: 4, kind: "explain", phase: "Diagnosis", animation: "Fade", visual: "number-line", fontFamily: "Tajawal", fontSize: 40 },
+    { id: "s3", title: "التصحيح المنهجي", label: "03", body: "الأقواس أولاً:\n(3 + 2) = 5 ⟶ 5 × 4 = 20", duration: 5, kind: "rule", phase: "Solution", animation: "Slide left", visual: "number-line", fontFamily: "Tajawal", fontSize: 42 },
+    { id: "s4", title: "القاعدة الذهبية", label: "04", body: "القوس كتلة واحدة مقدسة\nلا تفكها قبل حسابها.", duration: 3, kind: "rule", phase: "Intuition", animation: "Fade", visual: "number-line", fontFamily: "Tajawal", fontSize: 38 },
+    { id: "s5", title: "الدعوة للتميز", label: "05", body: "اضمن علامتك الكاملة الآن\nمع منهجية QED", duration: 3, kind: "cta", phase: "End card", animation: "Zoom in", visual: "none", fontFamily: "Tajawal", fontSize: 42 },
   ],
 };
 

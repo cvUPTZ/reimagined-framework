@@ -414,8 +414,8 @@ function Studio() {
             </svg>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <strong>3Blue1Brown — Dynamic Calculus</strong>
-            <small style={{ fontSize: 9, color: 'var(--primary)' }}>Moving tangent, Riemann sums & phasor</small>
+            <strong dir="auto">3Blue1Brown — جوهر التفاضل والتكامل</strong>
+            <small style={{ fontSize: 9, color: 'var(--primary)' }} dir="auto">انزلاق المماس، مجاميع ريمان، والدائرة المثلثية</small>
           </div>
         </Button>
         <Button variant="outline" className="template-card" onClick={() => {
@@ -432,8 +432,8 @@ function Studio() {
             </svg>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <strong>أولوية العمليات (Original BAC)</strong>
-            <small style={{ fontSize: 9, color: 'var(--gold)' }}>Misconceptions, number lines & step-by-step</small>
+            <strong dir="auto">أولوية العمليات (BAC 2026)</strong>
+            <small style={{ fontSize: 9, color: 'var(--gold)' }} dir="auto">تشخيص الفخاخ، مستقيم الأعداد، والحل المرحلي</small>
           </div>
         </Button>
         <Button variant="outline" className="template-card" onClick={() => {
@@ -448,25 +448,26 @@ function Studio() {
             </svg>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <strong>QED Classic — The Derivative</strong>
-            <small style={{ fontSize: 9, color: 'var(--muted-foreground)' }}>Parabolic curve and tangent slopes</small>
+            <strong dir="auto">الاشتقاق والمماس (QED Classic)</strong>
+            <small style={{ fontSize: 9, color: 'var(--muted-foreground)' }} dir="auto">منحنى الدالة وميل المماس اللحظي</small>
           </div>
         </Button>
         <Button variant="outline" className="template-card" onClick={() => {
           const blank: StudioProject = {
             ...referenceProject,
             id: `project-${crypto.randomUUID()}`,
-            name: 'Blank Canvas Story',
+            name: 'مشروع جديد فارغ',
             scenes: [{
               id: crypto.randomUUID(),
               label: '01',
-              title: 'Untitled scene',
-              body: 'Your mathematical perspective starts here.',
+              title: 'مشهد البداية',
+              body: 'ابدأ فكرتك الرياضية البصرية هنا.',
               duration: 5,
               kind: 'explain',
               phase: 'Intuition',
               animation: 'Fade',
               visual: 'none',
+              fontFamily: 'Tajawal',
               fontSize: 42,
             }],
           };
@@ -476,8 +477,8 @@ function Studio() {
         }}>
           <div className="template-art"><Plus size={28}/></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <strong>Blank Canvas</strong>
-            <small style={{ fontSize: 9, color: 'var(--muted-foreground)' }}>Build a new lesson from scratch</small>
+            <strong dir="auto">لوحة بيضاء جديدة</strong>
+            <small style={{ fontSize: 9, color: 'var(--muted-foreground)' }} dir="auto">ابدأ بناء درسك الرياضي من الصفر</small>
           </div>
         </Button>
       </div>}
