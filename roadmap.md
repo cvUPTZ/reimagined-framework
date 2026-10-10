@@ -13,7 +13,8 @@
 - [ ] Verify original import, editor playback and downloaded portrait/landscape videos.
 
 # Later approved phases
-- [ ] Precise canvas layers and timeline editing.
+- [x] Duration-proportional timeline, zoom, clip trimming/reordering, and playback synchronization.
+- [ ] Precise canvas layers, typography controls, and transitions.
 - [ ] Mathematics engine and original educational library restoration.
 - [ ] Cloud project/media library, richer audio, and brand kits.
 - [ ] AI outlines and stored narration.
