@@ -4,6 +4,7 @@ import { phaseOf } from '@/lib/reference-project';
 import { sceneMotion } from '@/lib/project-file';
 import { evaluateMathExpression, computeSlope, generatePlotData } from '@/lib/math-engine';
 import { hasLegacyRenderer, renderLegacyVisual, type VisualParams, type VisualStage } from '@/lib/legacy-visuals';
+import { TELEGRAM_QR_SRC, TELEGRAM_BOT_HANDLE, TELEGRAM_BOT_URL } from '@/assets/telegram-qr';
 
 export function ScenePreview({
   project,
@@ -296,7 +297,7 @@ export function ScenePreview({
               </tspan>
             )}
           </text>
-          <text x={width - 34} y="44" textAnchor="end" className="art-tagline" dir="auto">
+          <text x={width - 94} y="44" textAnchor="end" className="art-tagline" dir="auto">
             {tagline}
           </text>
         </>
@@ -635,7 +636,141 @@ export function ScenePreview({
             {scene.expression ?? project.expression}
           </text>
         )}
+
+        {/* 3B1B Final Scene / CTA Big Central Telegram QR Code Card */}
+        {((scene.showQrCta ?? (scene.kind === 'cta' || scene.phase === 'End card')) && (
+          <g transform={`translate(${width / 2}, ${portrait ? 540 : 285})`} className="art-qr-cta-card">
+            {/* Luminous Glow Frame */}
+            <rect
+              x={-125}
+              y={-145}
+              width={250}
+              height={290}
+              rx={24}
+              fill="rgba(11, 18, 30, 0.94)"
+              stroke={accentColor ?? '#38bdf8'}
+              strokeWidth={2}
+              filter={`url(#neonGlow-${id})`}
+            />
+            {/* Crisp white backdrop for camera scannability */}
+            <rect
+              x={-95}
+              y={-125}
+              width={190}
+              height={190}
+              rx={16}
+              fill="#ffffff"
+              stroke="rgba(255, 255, 255, 0.9)"
+              strokeWidth={1}
+            />
+            {/* Telegram QR Image */}
+            <image
+              href={TELEGRAM_QR_SRC}
+              x={-85}
+              y={-115}
+              width={170}
+              height={170}
+              preserveAspectRatio="xMidYMid meet"
+            />
+            {/* Telegram Bot Handle Badge */}
+            <g transform="translate(0, 92)">
+              <rect
+                x={-85}
+                y={-14}
+                width={170}
+                height={28}
+                rx={8}
+                fill="rgba(15, 23, 42, 0.92)"
+                stroke={accentColor ?? '#38bdf8'}
+                strokeWidth={1.2}
+              />
+              <text
+                x={0}
+                y={4}
+                textAnchor="middle"
+                fontSize={12}
+                fontWeight="bold"
+                fill={accentColor ?? '#38bdf8'}
+                fontFamily="ui-monospace, monospace"
+              >
+                {project.qrBotHandle ?? TELEGRAM_BOT_HANDLE}
+              </text>
+            </g>
+            {/* Arabic Scan Callout */}
+            <text
+              x={0}
+              y={130}
+              textAnchor="middle"
+              fontSize={11.5}
+              fontWeight="bold"
+              fill="#f8fafc"
+              fontFamily="Tajawal, sans-serif"
+              dir="auto"
+            >
+              امسح الكود واشترك في بوت التمارين والحلول
+            </text>
+          </g>
+        ))}
       </g>
+
+      {/* Telegram QR Watermark Corner Badge (rendered across all scenes in safe corner) */}
+      {(project.qrWatermark ?? (scene.showQrBadge ?? true)) && (
+        <g
+          transform={
+            portrait
+              ? `translate(${width - 76}, 28)`
+              : `translate(${width - 82}, 24)`
+          }
+          className="art-qr-corner-badge"
+          opacity={0.96}
+        >
+          {/* Pure white backing for instant camera scannability */}
+          <rect
+            x={0}
+            y={0}
+            width={48}
+            height={48}
+            rx={8}
+            fill="#ffffff"
+            stroke={accentColor ?? '#38bdf8'}
+            strokeWidth={1.2}
+            filter={`url(#softBloom-${id})`}
+          />
+          {/* QR Code image */}
+          <image
+            href={TELEGRAM_QR_SRC}
+            x={3}
+            y={3}
+            width={42}
+            height={42}
+            preserveAspectRatio="xMidYMid meet"
+          />
+          {/* Telegram pill handle under the QR code */}
+          <g transform="translate(24, 56)">
+            <rect
+              x={-34}
+              y={-7}
+              width={68}
+              height={14}
+              rx={4}
+              fill="rgba(8, 14, 24, 0.9)"
+              stroke={accentColor ?? '#38bdf8'}
+              strokeWidth={0.8}
+            />
+            <text
+              x={0}
+              y={3}
+              textAnchor="middle"
+              fontSize={7.5}
+              fontWeight="bold"
+              fill={accentColor ?? '#38bdf8'}
+              fontFamily="ui-monospace, monospace"
+            >
+              {project.qrBotHandle ?? TELEGRAM_BOT_HANDLE}
+            </text>
+          </g>
+        </g>
+      )}
 
       {safeZones && <rect x={width * 0.08} y={height * 0.07} width={width * 0.84} height={height * 0.81} className="art-safe" />}
 

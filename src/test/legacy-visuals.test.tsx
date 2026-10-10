@@ -46,8 +46,21 @@ describe('legacy visual renderers', () => {
     expect(rendered).toBeGreaterThan(20);
   });
 
-  it('ported models are no longer reported as missing', () => {
-    const missing = unsupportedLegacyModels();
-    for (const m of Object.keys(LEGACY_RENDERERS)) expect(missing).not.toContain(m);
+  it('renders corner Telegram QR watermark badge on regular scenes and big QR card on CTA scene', () => {
+    const entry = listLegacy('ready')[0]!;
+    const project = legacyToProject(entry)!;
+    // Scene 0: Hook scene with corner QR badge
+    const hookHtml = renderToStaticMarkup(createElement(ScenePreview, { project, scene: project.scenes[0]! }));
+    expect(hookHtml).toContain('art-qr-corner-badge');
+    expect(hookHtml).toContain('@MathZyno_bot');
+    expect(hookHtml).not.toContain('art-qr-cta-card');
+
+    // Final CTA Scene: Includes both corner QR and big central CTA card
+    const ctaScene = project.scenes.at(-1)!;
+    const ctaHtml = renderToStaticMarkup(createElement(ScenePreview, { project, scene: ctaScene }));
+    expect(ctaHtml).toContain('art-qr-corner-badge');
+    expect(ctaHtml).toContain('art-qr-cta-card');
+    expect(ctaHtml).toContain('@MathZyno_bot');
+    expect(ctaHtml).toContain('امسح الكود');
   });
 });

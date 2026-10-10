@@ -37,6 +37,8 @@ export interface Scene {
   showVisual?: boolean;
   showExpression?: boolean;
   showFootnote?: boolean;
+  showQrBadge?: boolean;
+  showQrCta?: boolean;
   narration?: string;
   legacy?: Record<string, unknown>;
 }
@@ -119,6 +121,8 @@ export interface StudioProject {
   mediaName?: string;
   brandKit?: BrandKit;
   audioTrack?: AudioTrackConfig;
+  qrWatermark?: boolean;
+  qrBotHandle?: string;
   updatedAt?: string;
 }
 
