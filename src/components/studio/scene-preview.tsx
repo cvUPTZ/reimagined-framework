@@ -1,4 +1,4 @@
-import { useId, useMemo } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { type Scene, type StudioProject } from '@/lib/studio';
 import { phaseOf } from '@/lib/reference-project';
 import { sceneMotion } from '@/lib/project-file';
@@ -7,6 +7,7 @@ import { evaluateMathExpression, computeSlope, generatePlotData } from '@/lib/ma
 export function ScenePreview({
   project,
   scene,
+  playing = false,
   safeZones = false,
   miniature = false,
   elapsed,
@@ -37,7 +38,34 @@ export function ScenePreview({
   const expressionY = (portrait ? 795 : 485) + (scene.expressionY ?? 0);
   const textX = textAlign === 'center' ? width / 2 : textAlign === 'left' ? (portrait ? 36 : 48) : width - (portrait ? 36 : 48);
   const textAnchor = textAlign === 'center' ? 'middle' : textAlign === 'left' ? 'start' : 'end';
-  const motion = sceneMotion(scene, elapsed);
+
+  // Ambient continuous clock for studio canvas (skipped in miniature & SSR)
+  const [ambientSec, setAmbientSec] = useState(0);
+  useEffect(() => {
+    if (miniature) return;
+    let frame = 0;
+    const start = performance.now();
+    function tick(now: number) {
+      setAmbientSec((now - start) / 1000);
+      frame = requestAnimationFrame(tick);
+    }
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [miniature]);
+
+  // Unify timeline playback, manual scrubbing, and ambient idle animation
+  const isScrubbingOrPlaying = playing || (elapsed !== undefined && elapsed > 0);
+  const animTime = isScrubbingOrPlaying
+    ? (elapsed ?? 0)
+    : miniature
+      ? (scene.duration || 5) * 0.4
+      : (ambientSec * 0.85) % (scene.duration || 5);
+
+  const progress = scene.duration > 0
+    ? Math.max(0, Math.min(1, animTime / scene.duration))
+    : 0.5;
+
+  const motion = sceneMotion(scene, isScrubbingOrPlaying ? elapsed : undefined);
   const wipeWidth = Math.max(0, Math.min(width, width * motion.wipeProgress));
   const brandName = project.brandKit?.brandName ?? 'QED';
   const tagline = project.brandKit?.tagline ?? 'A LITTLE CLARITY. A BIG DIFFERENCE.';
@@ -58,7 +86,8 @@ export function ScenePreview({
   const plotMinY = visual === 'wave' ? -1.6 : visual === 'exponential' ? -0.5 : -2.5;
   const plotMaxY = visual === 'wave' ? 1.6 : visual === 'exponential' ? 12 : 7.5;
 
-  const plotData = useMemo(() => {
+  // 1. Static/Base Curve Plot Data
+  const basePlotData = useMemo(() => {
     return generatePlotData(cleanExpr, {
       minX: plotMinX,
       maxX: plotMaxX,
@@ -70,21 +99,34 @@ export function ScenePreview({
     });
   }, [cleanExpr, plotMinX, plotMaxX, plotMinY, plotMaxY]);
 
-  const curvePath = !plotData.hasError && plotData.points.length >= 2
-    ? plotData.pathD
-    : visual === 'wave'
-      ? 'M 24 185 Q 66 100 110 185 T 195 185 T 280 185 T 366 185'
+  // 2. Dynamic 3B1B Traveling Sine Wave (propagating through space)
+  const waveSpeed = 2.5;
+  const wavePhase = (animTime * waveSpeed) % (Math.PI * 2);
+  const wavePlotPath = useMemo(() => {
+    if (visual !== 'wave') return '';
+    let d = '';
+    const steps = 72;
+    for (let i = 0; i <= steps; i++) {
+      const xMath = plotMinX + (i / steps) * (plotMaxX - plotMinX);
+      const yMath = Math.sin(xMath - wavePhase);
+      const cx = ((xMath - plotMinX) / (plotMaxX - plotMinX)) * 390;
+      const cy = 240 - ((yMath - plotMinY) / (plotMaxY - plotMinY)) * 240;
+      d += i === 0 ? `M ${cx.toFixed(1)} ${cy.toFixed(1)}` : ` L ${cx.toFixed(1)} ${cy.toFixed(1)}`;
+    }
+    return d;
+  }, [visual, plotMinX, plotMaxX, plotMinY, plotMaxY, wavePhase]);
+
+  const curvePath = visual === 'wave' && wavePlotPath
+    ? wavePlotPath
+    : (!basePlotData.hasError && basePlotData.points.length >= 2)
+      ? basePlotData.pathD
       : visual === 'exponential'
         ? 'M 20 183 Q 195 183 225 145 T 305 38'
         : 'M 80 45 Q 195 325 310 45';
 
-  const progress = elapsed !== undefined && scene.duration > 0
-    ? Math.max(0, Math.min(1, elapsed / scene.duration))
-    : 0.5;
-
-  // 3B1B Tangent calculus calculations
+  // 3. 3B1B Tangent calculus calculations
   const travelT = 0.5 - 0.5 * Math.cos(progress * Math.PI * 2);
-  const x0 = -1.75 + 3.5 * travelT;
+  const x0 = -1.85 + 3.7 * travelT;
   const y0Val = evaluateMathExpression(cleanExpr, x0).value;
   const y0 = isNaN(y0Val) ? 0 : y0Val;
   const slope = computeSlope(cleanExpr, x0);
@@ -103,13 +145,14 @@ export function ScenePreview({
   const ty2 = ptY + tLen * Math.sin(angle);
 
   // Slope Triangle (Delta X & Delta Y)
-  const dxMath = 0.8;
+  const dxMath = 0.75;
   const dxPx = (dxMath / (plotMaxX - plotMinX)) * 390;
   const dyMath = slope * dxMath;
   const dyPx = -dyMath * scaleFactorY;
 
-  // 3B1B Riemann Sums for Definite Integral
-  const numBars = Math.min(24, Math.max(4, Math.floor(4 + progress * 16)));
+  // 4. 3B1B Riemann Sums for Definite Integral
+  const riemannCycle = 0.5 - 0.5 * Math.cos(progress * Math.PI * 2);
+  const numBars = Math.min(28, Math.max(4, Math.floor(4 + riemannCycle * 24)));
   const intA = -1.6;
   const intB = 1.6;
   const stepW = (intB - intA) / numBars;
@@ -128,22 +171,38 @@ export function ScenePreview({
     return bars;
   }, [numBars, cleanExpr, plotMinX, plotMaxX, plotMinY, plotMaxY, stepW]);
 
-  // 3B1B Complex Phasor Unit Circle for Trigonometry
+  // 5. 3B1B Complex Phasor Unit Circle for Trigonometry
   const phasorCenter = 50;
   const phasorY = 185;
   const phasorR = 26;
-  const phasorTheta = progress * Math.PI * 4;
+  const phasorTheta = wavePhase;
   const phasorTipX = phasorCenter + phasorR * Math.cos(phasorTheta);
   const phasorTipY = phasorY - phasorR * Math.sin(phasorTheta);
+  const waveContactY = 240 - ((Math.sin(0 - wavePhase) - plotMinY) / (plotMaxY - plotMinY)) * 240;
 
-  // Local Extrema and Zero Detection for Curve
+  // 6. Number Line Animated Calculations
+  const numLineCycle = 0.5 - 0.5 * Math.cos(progress * Math.PI * 2);
+  const jumpStartX = 112.5;
+  const jumpEndX = 360;
+  const jumpBeadX = jumpStartX + (jumpEndX - jumpStartX) * numLineCycle;
+  const jumpBeadY = 140 - Math.sin(numLineCycle * Math.PI) * 75;
+
+  // 7. Curve Traveling Probe Point
+  const curveProbeT = 0.5 - 0.5 * Math.cos(progress * Math.PI * 2);
+  const curveProbeX = -2.5 + 5.0 * curveProbeT;
+  const curveProbeYVal = evaluateMathExpression(cleanExpr, curveProbeX).value;
+  const curveProbeY = isNaN(curveProbeYVal) ? 0 : curveProbeYVal;
+  const probePxX = ((curveProbeX - plotMinX) / (plotMaxX - plotMinX)) * 390;
+  const probePxY = Math.max(15, Math.min(225, 240 - ((curveProbeY - plotMinY) / (plotMaxY - plotMinY)) * 240));
+
+  // 8. Local Extrema and Zero Detection for Curve
   const extremaPoints = useMemo(() => {
-    if (visual !== 'curve' || plotData.points.length < 5) return [];
+    if (visual !== 'curve' || basePlotData.points.length < 5) return [];
     const res: { x: number; y: number; canvasX: number; canvasY: number; type: 'max' | 'min' }[] = [];
-    for (let i = 2; i < plotData.points.length - 2; i++) {
-      const prev = plotData.points[i - 1]!;
-      const curr = plotData.points[i]!;
-      const next = plotData.points[i + 1]!;
+    for (let i = 2; i < basePlotData.points.length - 2; i++) {
+      const prev = basePlotData.points[i - 1]!;
+      const curr = basePlotData.points[i]!;
+      const next = basePlotData.points[i + 1]!;
       if (curr.y > prev.y && curr.y > next.y && curr.y > 0.5) {
         res.push({ x: curr.x, y: curr.y, canvasX: curr.canvasX, canvasY: curr.canvasY, type: 'max' });
       } else if (curr.y < prev.y && curr.y < next.y && curr.y < 5) {
@@ -151,12 +210,12 @@ export function ScenePreview({
       }
     }
     return res;
-  }, [visual, plotData.points]);
+  }, [visual, basePlotData.points]);
 
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      className={`scene-art ${miniature ? 'miniature-art' : ''}`}
+      className={`scene-art ${miniature ? 'miniature-art' : ''} ${playing ? 'is-playing' : 'is-idle'} animation-${(scene.animation ?? 'Fade').toLowerCase().replaceAll(' ', '-')}`}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label={miniature ? scene.title : 'Math video preview'}
@@ -190,8 +249,8 @@ export function ScenePreview({
           <stop offset="100%" stopColor="#f59e0b" />
         </linearGradient>
         <linearGradient id={`riemannGrad-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#34d399" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.08" />
+          <stop offset="0%" stopColor="#34d399" stopOpacity="0.65" />
+          <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.12" />
         </linearGradient>
         <linearGradient id={`areaGrad-${id}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.4" />
@@ -305,10 +364,13 @@ export function ScenePreview({
                   الأولوية 1: القوس أولاً
                 </text>
 
-                {/* Jump Arc: Multiply by 4 */}
-                <path d="M 112.5 125 Q 235 55 360 125" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeDasharray="5 3" filter={`url(#softBloom-${id})`} />
+                {/* Animated Jump Arc: Multiply by 4 */}
+                <path d="M 112.5 125 Q 235 55 360 125" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeDasharray="6 4" filter={`url(#softBloom-${id})`} />
                 <circle cx="360" cy="140" r="7" fill="#fbbf24" filter={`url(#neonGlow-${id})`} />
                 <circle cx="360" cy="140" r="14" fill="none" stroke="#fbbf24" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" className="art-point-halo" />
+
+                {/* Flying Jump Bead along the arc */}
+                <circle cx={jumpBeadX} cy={jumpBeadY} r="6.5" fill="#ffffff" stroke="#fbbf24" strokeWidth="2" filter={`url(#neonGlow-${id})`} />
 
                 <g transform="translate(235, 65)">
                   <rect x="-35" y="-12" width="70" height="20" rx="4" fill="var(--surface)" stroke="#fbbf24" strokeWidth="1" />
@@ -317,10 +379,10 @@ export function ScenePreview({
                   </text>
                 </g>
 
-                {/* Target 20 Banner */}
+                {/* Target 20 Banner (glows as bead arrives) */}
                 <g transform="translate(195, 200)">
-                  <rect x="-95" y="-14" width="190" height="28" rx="5" fill="var(--surface)" stroke="var(--primary)" strokeWidth="1.2" />
-                  <text x="0" y="4" textAnchor="middle" fill="var(--primary)" fontSize="14" fontWeight="bold">
+                  <rect x="-95" y="-14" width="190" height="28" rx="5" fill="var(--surface)" stroke={numLineCycle > 0.6 ? '#34d399' : 'var(--primary)'} strokeWidth={numLineCycle > 0.6 ? 2 : 1.2} filter={numLineCycle > 0.6 ? `url(#softBloom-${id})` : undefined} />
+                  <text x="0" y="4" textAnchor="middle" fill={numLineCycle > 0.6 ? '#34d399' : 'var(--primary)'} fontSize="14" fontWeight="bold">
                     5 × 4 = 20 (الناتج الصحيح)
                   </text>
                 </g>
@@ -328,7 +390,7 @@ export function ScenePreview({
                 {/* Misconception Alert Banner in Arabic */}
                 {project.mistake && (
                   <g transform="translate(195, 25)">
-                    <rect x="-175" y="-14" width="350" height="28" rx="5" fill="color-mix(in oklab, var(--coral) 16%, var(--surface))" stroke="var(--coral)" strokeWidth="1.2" />
+                    <rect x="-175" y="-14" width="350" height="28" rx="5" fill="color-mix(in oklab, var(--coral) 16%, var(--surface))" stroke="var(--coral)" strokeWidth="1.2" filter={`url(#softBloom-${id})`} />
                     <text x="0" y="4" textAnchor="middle" fill="var(--coral)" fontSize="10.5" fontWeight="600" dir="auto">
                       ⚠ فخ شائع: {project.mistake}
                     </text>
@@ -403,7 +465,7 @@ export function ScenePreview({
 
                     {/* Arabic Riemann Convergence Card */}
                     <g transform="translate(195, 232)">
-                      <rect x="-135" y="-12" width="270" height="22" rx="4" fill="var(--surface)" stroke="var(--primary)" strokeWidth="1.2" />
+                      <rect x="-140" y="-12" width="280" height="22" rx="4" fill="var(--surface)" stroke="var(--primary)" strokeWidth="1.2" />
                       <text x="0" y="3" textAnchor="middle" fontSize="9.5" fill="var(--primary)" fontWeight="bold" dir="auto">
                         مجموع ريمان: N = {numBars} مستطيل ⟶ ∫[a,b] f(x)dx
                       </text>
@@ -411,7 +473,7 @@ export function ScenePreview({
                   </g>
                 )}
 
-                {/* 3B1B Complex Phasor Unit Circle for Waves */}
+                {/* 3B1B Dynamic Traveling Sine Wave & Phasor Unit Circle */}
                 {visual === 'wave' && (
                   <g>
                     {/* Unit Circle with Angle Arc */}
@@ -424,15 +486,16 @@ export function ScenePreview({
                     <line x1={phasorCenter} y1={phasorY} x2={phasorTipX} y2={phasorTipY} stroke="#ffffff" strokeWidth="2" />
                     <circle cx={phasorTipX} cy={phasorTipY} r="4" fill="#38bdf8" filter={`url(#neonGlow-${id})`} />
 
-                    {/* Laser Projection Line Across to Wave */}
-                    <line x1={phasorTipX} y1={phasorTipY} x2="385" y2={phasorTipY} className="art-laser" stroke="#38bdf8" strokeWidth="1.2" strokeDasharray="3 3" />
+                    {/* Dynamic Laser Projection Line Across to Wave at x=0 */}
+                    <line x1={phasorTipX} y1={phasorTipY} x2="195" y2={waveContactY} className="art-laser" stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="3 3" />
+                    <circle cx="195" cy={waveContactY} r="4.5" fill="#38bdf8" filter={`url(#neonGlow-${id})`} />
 
                     {/* Arabic Phasor Callout */}
                     <text x={phasorCenter} y="146" textAnchor="middle" fontSize="8" fill="#818cf8" fontWeight="bold" dir="auto">
                       الدائرة المثلثية (e^{'{iθ}'})
                     </text>
                     <text x={phasorCenter} y="224" textAnchor="middle" fontSize="7.5" fill="#38bdf8" dir="auto">
-                      المركبة الرأسية: sin(θ)
+                      sin(θ) = {(-Math.sin(wavePhase)).toFixed(2)}
                     </text>
                   </g>
                 )}
@@ -445,9 +508,6 @@ export function ScenePreview({
                     fill="none"
                     stroke={`url(#curveGrad-${id})`}
                     strokeWidth="3.2"
-                    pathLength="1"
-                    strokeDasharray="1"
-                    strokeDashoffset={1 - motion.draw}
                     filter={`url(#neonGlow-${id})`}
                   />
                 )}
@@ -498,18 +558,33 @@ export function ScenePreview({
                   </g>
                 )}
 
-                {/* Local Extrema Markers on Curve */}
-                {visual === 'curve' && extremaPoints.map((ext, idx) => (
-                  <g key={idx} transform={`translate(${ext.canvasX}, ${ext.canvasY})`}>
-                    <circle cx="0" cy="0" r="5" fill={ext.type === 'max' ? '#fbbf24' : '#34d399'} filter={`url(#neonGlow-${id})`} />
-                    <g transform="translate(0, -14)">
-                      <rect x="-42" y="-9" width="84" height="16" rx="3" fill="var(--surface)" stroke={ext.type === 'max' ? '#fbbf24' : '#34d399'} strokeWidth="1" />
-                      <text x="0" y="3" textAnchor="middle" fontSize="7.5" fill={ext.type === 'max' ? '#fbbf24' : '#34d399'} fontWeight="bold" dir="auto">
-                        {ext.type === 'max' ? 'ذروة عظمى f\'=0' : 'قيمة صغرى f\'=0'}
+                {/* Dynamic Curve Probe Point (when in generic curve mode) */}
+                {visual === 'curve' && (
+                  <g>
+                    {/* Animated probe point sliding continuously along curve */}
+                    <circle cx={probePxX} cy={probePxY} r="10" className="art-point-halo" fill="color-mix(in oklab, #38bdf8 25%, transparent)" />
+                    <circle cx={probePxX} cy={probePxY} r="4.5" fill="#38bdf8" filter={`url(#neonGlow-${id})`} />
+                    <g transform={`translate(${probePxX}, ${Math.max(25, probePxY - 16)})`}>
+                      <rect x="-35" y="-10" width="70" height="18" rx="3" fill="var(--surface)" stroke="#38bdf8" strokeWidth="1" />
+                      <text x="0" y="2" textAnchor="middle" fontSize="8" fill="#38bdf8" fontWeight="bold">
+                        P({curveProbeX.toFixed(1)}, {curveProbeY.toFixed(1)})
                       </text>
                     </g>
+
+                    {/* Local Extrema Markers on Curve */}
+                    {extremaPoints.map((ext, idx) => (
+                      <g key={idx} transform={`translate(${ext.canvasX}, ${ext.canvasY})`}>
+                        <circle cx="0" cy="0" r="5" fill={ext.type === 'max' ? '#fbbf24' : '#34d399'} filter={`url(#neonGlow-${id})`} />
+                        <g transform="translate(0, -14)">
+                          <rect x="-42" y="-9" width="84" height="16" rx="3" fill="var(--surface)" stroke={ext.type === 'max' ? '#fbbf24' : '#34d399'} strokeWidth="1" />
+                          <text x="0" y="3" textAnchor="middle" fontSize="7.5" fill={ext.type === 'max' ? '#fbbf24' : '#34d399'} fontWeight="bold" dir="auto">
+                            {ext.type === 'max' ? 'ذروة عظمى f\'=0' : 'قيمة صغرى f\'=0'}
+                          </text>
+                        </g>
+                      </g>
+                    ))}
                   </g>
-                ))}
+                )}
 
                 {/* Exponential Asymptote & Anchor */}
                 {visual === 'exponential' && (
@@ -519,6 +594,7 @@ export function ScenePreview({
                       المستقيم المقارب y = 0
                     </text>
                     <circle cx="195" cy="185" r="4.5" fill="#fbbf24" filter={`url(#neonGlow-${id})`} />
+                    <circle cx="195" cy="185" r="9" className="art-point-halo" fill="color-mix(in oklab, #fbbf24 25%, transparent)" />
                     <text x="204" y="180" fontSize="8" fill="#fbbf24" fontWeight="bold">
                       (0, 1)
                     </text>

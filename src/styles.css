@@ -175,10 +175,10 @@ h2 { margin:0; font-size:12px; font-weight:600; }
 .art-interval { fill:color-mix(in oklab,var(--primary) 20%,transparent); stroke:var(--primary); stroke-width:2; }
 .art-bracket { stroke:var(--primary); stroke-width:2; fill:none; }
 .art-footnote { fill:var(--muted-foreground); font-size:8px; opacity:.55; }
-.art-laser { stroke:var(--blue); stroke-width:1.2; stroke-dasharray:4 3; opacity:.85; }
+.art-laser { stroke:var(--blue); stroke-width:1.2; stroke-dasharray:4 3; opacity:.85; animation:laser-flow 1.5s linear infinite; }
 .art-hud-text { font-family:var(--font-display), Tajawal, monospace, sans-serif; font-weight:600; }
 .art-riemann-bar { transition:height .15s, y .15s; }
-.art-point-halo { animation:pulse 1.8s infinite; }
+.art-point-halo { animation:pulse 1.8s infinite; transform-box:fill-box; transform-origin:center; }
 .art-glow-line { filter:drop-shadow(0 0 6px var(--primary)); }
 .art-glow-gold { filter:drop-shadow(0 0 6px var(--gold)); }
 .art-glow-blue { filter:drop-shadow(0 0 6px var(--blue)); }
@@ -187,6 +187,8 @@ h2 { margin:0; font-size:12px; font-weight:600; }
 .art-axis-subtick { stroke:var(--axis); stroke-width:0.8; opacity:.4; }
 .art-origin-dot { fill:var(--foreground); stroke:var(--primary); stroke-width:1.5; }
 .art-safe { fill:none; stroke:var(--primary); stroke-width:1; stroke-dasharray:7 7; opacity:.55; }
+@keyframes laser-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -28; } }
+@keyframes arc-flow { from { stroke-dashoffset: 60; } to { stroke-dashoffset: 0; } }
 .canvas-scene-label { position:absolute; bottom:10px; font-size:8px; color:var(--muted-foreground); display:flex; gap:7px; }
 .canvas-scene-label span { opacity:.6; }
 .layer-list { display:flex; flex-direction:column; gap:8px; }
@@ -343,9 +345,13 @@ h2 { margin:0; font-size:12px; font-weight:600; }
 @keyframes reveal { from { opacity:0; } to { opacity:1; } }
 @keyframes slide-reveal { from { opacity:0; transform:translateY(25px); } to { opacity:1; transform:translateY(0); } }
 @keyframes draw-curve { from { stroke-dashoffset:500; } to { stroke-dashoffset:0; } }
-.is-playing.animation-fade .art-content { animation:reveal .7s both; }
-.is-playing.animation-slide-up .art-content { animation:slide-reveal .65s both; }
-.is-playing.animation-draw-in .art-curve { stroke-dasharray:500; animation:draw-curve 1.6s ease both; }
+@keyframes zoom-reveal { from { opacity:0; transform:scale(0.88); } to { opacity:1; transform:scale(1); } }
+@keyframes slide-left-reveal { from { opacity:0; transform:translateX(35px); } to { opacity:1; transform:translateX(0); } }
+.is-playing.animation-fade .art-content, .video-stage .animation-fade .art-content { animation:reveal .7s both; }
+.is-playing.animation-slide-up .art-content, .video-stage .animation-slide-up .art-content { animation:slide-reveal .65s both; }
+.is-playing.animation-slide-left .art-content, .video-stage .animation-slide-left .art-content { animation:slide-left-reveal .65s both; }
+.is-playing.animation-zoom-in .art-content, .video-stage .animation-zoom-in .art-content { animation:zoom-reveal .65s both; }
+.is-playing.animation-draw-in .art-curve, .video-stage .animation-draw-in .art-curve { stroke-dasharray:500; animation:draw-curve 1.6s ease both; }
 @media(min-height:1000px) { .timeline { flex-basis:190px; } }
 @media(max-width:1200px) { .topbar { gap:15px; padding:0 18px; }.save-state { display:none; }.editor-grid { grid-template-columns:225px minmax(0,1fr) 270px; }.preview-heading { padding:0 14px; }.live-preview { display:none; }.breadcrumb { display:none; }.scene-select-button { gap:9px; padding:9px 6px; }.scene-list { padding:10px; }.scene-details small { font-size:8px; } }
 @media(max-width:1000px) { .navigation-rail { flex-basis:64px; }.rail-links { padding:18px 5px; }.rail-item { font-size:9px; }.editor-grid { grid-template-columns:195px minmax(0,1fr) 250px; }.scene-select-button { gap:8px; }.scene-thumb { flex-basis:39px; height:70px; }.scene-details { gap:6px; }.scene-details strong { font-size:9px; }.scene-list { padding:8px; }.scene-details small { gap:4px; }.topbar { flex-basis:64px; padding:0 15px; }.workspace-toolbar { flex-basis:49px; padding:0 16px; }.wordmark { font-size:21px; }.wordmark small,.wordmark i { display:none; }.header-actions { gap:7px; }.header-actions > button[aria-label="Open project"] { display:none; }.project-title { max-width:290px; }.project-title input { font-size:11px; }.inspector-content { padding:18px 15px; }.canvas-ratio { font-size:8px; gap:5px; }.preview-heading > div { gap:8px; }.preview-heading .overline { display:none; }.canvas-workspace { padding:10px 15px 28px; }.playback-bar { padding:0 9px; }.playback-left { gap:0; }.preview-quality { display:none; }.timeline-clip { padding:0 7px; gap:5px; }.timeline-clip small { display:none; }.statusbar > span:last-child { display:none; } }

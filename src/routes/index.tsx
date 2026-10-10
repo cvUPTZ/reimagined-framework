@@ -9,7 +9,7 @@ import { TimelineEditor } from '@/components/studio/timeline-editor';
 import { sceneStart, trimScene } from '@/lib/timeline';
 import { parseProjectFile, projectFile, sceneAtTime } from '@/lib/project-file';
 import { buildScenes, defaultBrandKits, duplicateScene, moveScene, totalDuration, type Scene, type StudioProject } from '@/lib/studio';
-import { phaseNames, phaseOf, phaseClass, referenceProject, threeBlueOneBrownProject, originalZipProject, timecode } from '@/lib/reference-project';
+import { phaseNames, phaseOf, phaseClass, referenceProject, threeBlueOneBrownProject, originalZipProject, bacLogarithmProject, bacIntegralsProject, timecode } from '@/lib/reference-project';
 import { evaluateMathExpression } from '@/lib/math-engine';
 import { lessonToStudioProject, searchEducationalLessons } from '@/lib/educational-library';
 import { listProjects, getProject, saveProject as persistProject, deleteProject as removeStoredProject, duplicateProject as cloneStoredProject, searchProjects, listSnapshots, createSnapshot, type ProjectMeta, type ProjectSnapshot } from '@/lib/project-store';
@@ -130,18 +130,27 @@ function Studio() {
     let frame = 0;
     let last = performance.now();
     function tick(now: number) {
-      const delta = (now - last) / 1000; last = now;
+      const delta = (now - last) / 1000;
+      last = now;
       setTime(t => {
         const next = Math.min(duration, t + delta);
         if (next >= duration) setPlaying(false);
-        setSelected(sceneAtTime(project, next).index);
         return next;
       });
       frame = requestAnimationFrame(tick);
     }
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, duration, project]);
+  }, [playing, duration]);
+
+  useEffect(() => {
+    if (project.scenes.length > 0) {
+      const currentIdx = sceneAtTime(project, time).index;
+      if (currentIdx !== selected) {
+        setSelected(currentIdx);
+      }
+    }
+  }, [time, project, selected]);
   useEffect(() => {
     if (!audio.current) return;
     audio.current.volume = volume / 100; audio.current.muted = muted;
@@ -181,7 +190,7 @@ function Studio() {
       <div className="workspace-toolbar"><div className="workspace-heading"><span className="live-dot"/><strong>Video editor</strong><span className="toolbar-divider"/><small>{project.scenes.length} scenes · {timecode(duration)}</small></div><div className="toolbar-actions"><IconButton icon={Undo2} label="Undo" onClick={undo} disabled={!history.length}/><IconButton icon={Redo2} label="Redo" onClick={redo} disabled={!future.length}/><span className="toolbar-divider"/><Button variant="ghost" size="sm" onClick={() => setPanel('templates')}><Sparkles size={16}/>Templates</Button><IconButton icon={MoreHorizontal} label="Workspace settings" onClick={() => setPanel('settings')}/></div></div>
       <main className="editor-grid">
         <section className="scene-sidebar"><div className="section-heading"><div><Layers size={16}/><h2>Scenes</h2><span className="count">{String(project.scenes.length).padStart(2,'0')}</span></div><IconButton icon={Plus} label="Add scene" onClick={add}/></div><div className="scene-list">{project.scenes.map((s,i) => <div key={s.id} className={`scene-item ${selected === i ? 'scene-selected' : ''}`} draggable onDragStart={e => e.dataTransfer.setData('text/plain', String(i))} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (!Number.isInteger(from)) return; reorder(from, i); }}><Button variant="ghost" className="scene-select-button" aria-label={`Select scene ${i+1}: ${s.title}`} aria-pressed={selected === i} onClick={() => select(i)}><div className={`scene-thumb ${phaseClass(phaseOf(s))}`}><ScenePreview project={project} scene={s} miniature/><span className="thumbnail-duration">{s.duration}s</span></div><div className="scene-details"><div className="scene-number">{String(i+1).padStart(2,'0')}<span className={`phase-label ${phaseClass(phaseOf(s))}`}>{phaseOf(s)}</span></div><strong dir="auto">{s.title}</strong><small>{s.duration.toFixed(1)} sec<span>·</span>{s.animation ?? 'Fade'}</small></div></Button></div>)}</div><Button variant="outline" className="add-scene" size="sm" onClick={add}><Plus size={15}/>Add scene</Button><div className="sidebar-footer"><span className="live-dot"/>Story arc<span>Custom<ChevronDown size={11}/></span></div></section>
-        <section className="preview-area"><div className="preview-heading"><div><span className="overline">CANVAS</span><span className="canvas-ratio">{ratio}<span>·</span>{project.format === 'portrait' ? '1080 × 1920' : '1920 × 1080'}</span></div><div className="preview-tools"><select aria-label="Canvas zoom" value={zoom} onChange={e => setZoom(e.target.value)}><option>Fit</option><option>80%</option><option>60%</option></select><IconButton icon={Expand} label="Full screen canvas" onClick={() => void stage.current?.requestFullscreen?.()}/></div></div><div className={`canvas-workspace ${project.format === 'landscape' ? 'canvas-landscape' : ''}`}><div className={`video-stage zoom-${zoom === 'Fit' ? 'fit' : zoom.replace('%','')}`} ref={stage}><ScenePreview key={scene.id} project={project} scene={scene} elapsed={sceneElapsed} safeZones={safeZones}/></div><span className="canvas-scene-label">SCENE {String(selected+1).padStart(2,'0')}<span>/ {String(project.scenes.length).padStart(2,'0')}</span></span></div><div className="playback-bar"><div className="playback-left"><IconButton icon={muted ? VolumeX : Volume2} label="Toggle audio" onClick={() => setMuted(m => !m)}/><span className="preview-quality">HD</span></div><div className="playback-center"><IconButton icon={SkipBack} label="Restart playback" onClick={() => select(0)}/><Button variant="secondary" size="icon" className="play-button" aria-label={playing ? 'Pause' : 'Play'} onClick={() => { if (!playing && time >= duration) select(0); setPlaying(p => !p); }}>{playing ? <Pause size={16}/> : <Play size={16}/>}</Button><span className="time-display">{timecode(time)}<span>/ {timecode(duration)}</span></span></div><span className="live-preview"><span className="live-dot"/>{playing ? 'Playing' : 'Live preview'}</span></div></section>
+        <section className="preview-area"><div className="preview-heading"><div><span className="overline">CANVAS</span><span className="canvas-ratio">{ratio}<span>·</span>{project.format === 'portrait' ? '1080 × 1920' : '1920 × 1080'}</span></div><div className="preview-tools"><select aria-label="Canvas zoom" value={zoom} onChange={e => setZoom(e.target.value)}><option>Fit</option><option>80%</option><option>60%</option></select><IconButton icon={Expand} label="Full screen canvas" onClick={() => void stage.current?.requestFullscreen?.()}/></div></div><div className={`canvas-workspace ${project.format === 'landscape' ? 'canvas-landscape' : ''}`}><div className={`video-stage zoom-${zoom === 'Fit' ? 'fit' : zoom.replace('%','')}`} ref={stage}><ScenePreview key={scene.id} project={project} scene={scene} elapsed={sceneElapsed} playing={playing} safeZones={safeZones}/></div><span className="canvas-scene-label">SCENE {String(selected+1).padStart(2,'0')}<span>/ {String(project.scenes.length).padStart(2,'0')}</span></span></div><div className="playback-bar"><div className="playback-left"><IconButton icon={muted ? VolumeX : Volume2} label="Toggle audio" onClick={() => setMuted(m => !m)}/><span className="preview-quality">HD</span></div><div className="playback-center"><IconButton icon={SkipBack} label="Restart playback" onClick={() => select(0)}/><Button variant="secondary" size="icon" className="play-button" aria-label={playing ? 'Pause' : 'Play'} onClick={() => { if (!playing && time >= duration) select(0); setPlaying(p => !p); }}>{playing ? <Pause size={16}/> : <Play size={16}/>}</Button><span className="time-display">{timecode(time)}<span>/ {timecode(duration)}</span></span></div><span className="live-preview"><span className="live-dot"/>{playing ? 'Playing' : 'Live preview'}</span></div></section>
         <aside className="inspector"><div className="section-heading"><div><SlidersHorizontal size={16}/><h2>Scene properties</h2></div><IconButton icon={MoreHorizontal} label="Duplicate selected scene" onClick={duplicate}/></div><div className="inspector-tabs">{['Content','Layers','Typography','Motion'].map(t => <Button variant="ghost" key={t} className={inspector === t ? 'tab-active' : ''} onClick={() => setInspector(t)}>{t}</Button>)}</div><div className="inspector-content">
           <Field label="Scene name"><input aria-label="Scene name" dir="auto" value={scene.title} onChange={e => edit({ title: e.target.value })}/></Field><div className="field-row"><Field label="Scene type"><select value={phaseOf(scene)} onChange={e => edit({ phase: e.target.value })}>{phaseNames.map(p => <option key={p}>{p}</option>)}</select></Field><Field label="Duration"><div className="suffix-input"><input aria-label="Duration" type="number" min=".1" max="600" step=".1" value={scene.duration} onChange={e => { const n = Number(e.target.value); if (n >= .1 && n <= 600) edit({ duration: n }); }}/><span>sec</span></div></Field></div>
           {inspector === 'Content' && <><div className="field-section"><Field label="On-screen text" extra="Text layer"><textarea aria-label="On-screen text" dir="auto" rows={3} value={scene.body} onChange={e => edit({ body: e.target.value })}/></Field><div className="text-tools"><span><b>T</b>{scene.fontFamily ?? 'Space Grotesk'}</span><Button variant="ghost" size="sm" onClick={() => setInspector('Typography')}>{scene.fontSize ?? 42} px · {scene.textAlign ?? 'center'}<ChevronDown size={12}/></Button></div></div><div className="field-section"><Field label="Math expression" extra={<i className="math-tag">ƒx</i>}><input aria-label="Math expression" className="formula-input" value={scene.expression ?? project.expression} onChange={e => edit({ expression: e.target.value })}/></Field>{formulaValidation.error ? <small style={{ color: 'var(--coral)', fontSize: 9, display: 'block', marginTop: 4 }}>⚠️ {formulaValidation.error}</small> : <small style={{ color: 'var(--primary)', fontSize: 9, display: 'block', marginTop: 4 }}>✓ Valid formula (f(1) = {formulaValidation.value})</small>}</div><div className="field-section"><Field label="Visual model"><select value={scene.visual ?? 'curve'} onChange={e => { const visual = e.target.value as Scene['visual']; edit({ visual }); }}><option value="curve">Function curve f(x) = x²</option><option value="tangent">Tangent & slope f'(x)</option><option value="wave">Trigonometric wave sin(x)</option><option value="exponential">Exponential curve eˣ</option><option value="integral">Definite integral ∫ f(x)dx</option><option value="number-line">Number line & bracket</option><option value="none">Text only</option></select></Field><div className="model-miniature"><svg viewBox="0 0 240 65" aria-hidden="true"><path d="M25 50H220M115 8V58" className="art-axis"/><path d="M58 12Q118 85 178 12" fill="none" className="art-curve"/></svg><span>{scene.visual === 'wave' ? 'sin(x)' : scene.visual === 'exponential' ? 'eˣ' : scene.visual === 'integral' ? '∫ f(x)dx' : scene.visual === 'tangent' ? "f'(x)" : scene.visual === 'number-line' ? '[a, b]' : 'f(x) = x²'}</span></div></div><div className="field-section"><Field label="Voice-over script" extra={<AudioLines size={14}/>}><textarea rows={3} value={scene.narration ?? scene.body} onChange={e => edit({ narration: e.target.value })}/></Field><Button variant="ghost" className="voice-button" size="sm" onClick={() => { if (!('speechSynthesis' in window)) { setNotice('Speech playback is unavailable.'); return; } speechSynthesis.cancel(); const text = scene.narration ?? scene.body; const u = new SpeechSynthesisUtterance(text); u.lang = /[\u0600-\u06ff]/.test(text) ? 'ar' : 'en-US'; speechSynthesis.speak(u); }}><Play size={12}/>Listen to script</Button></div></>}
@@ -353,6 +362,20 @@ function Studio() {
           }}>
             <BookOpen size={18}/>أولوية العمليات — Original BAC Style<ChevronRight size={16}/>
           </Button>
+          <Button variant="secondary" className="project-option w-full" onClick={() => {
+            load(bacLogarithmProject);
+            persistProject(bacLogarithmProject);
+            setNotice('Loaded BAC Logarithm project');
+          }}>
+            <Sparkles size={18}/>الدالة اللوغاريتمية النيبيرية ln(x) — BAC 2026<ChevronRight size={16}/>
+          </Button>
+          <Button variant="secondary" className="project-option w-full" onClick={() => {
+            load(bacIntegralsProject);
+            persistProject(bacIntegralsProject);
+            setNotice('Loaded BAC Integrals & Riemann Sums project');
+          }}>
+            <Sparkles size={18}/>التكامل والمساحات ومجاميع ريمان — BAC 2026<ChevronRight size={16}/>
+          </Button>
           <Button variant="ghost" className="project-option w-full" onClick={() => {
             load(referenceProject);
             persistProject(referenceProject);
@@ -434,6 +457,43 @@ function Studio() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <strong dir="auto">أولوية العمليات (BAC 2026)</strong>
             <small style={{ fontSize: 9, color: 'var(--gold)' }} dir="auto">تشخيص الفخاخ، مستقيم الأعداد، والحل المرحلي</small>
+          </div>
+        </Button>
+        <Button variant="outline" className="template-card" onClick={() => {
+          load(bacLogarithmProject);
+          persistProject(bacLogarithmProject);
+          setNotice('Loaded BAC Logarithm story');
+        }}>
+          <div className="template-art">
+            <svg viewBox="0 0 160 90">
+              <path d="M10 65H150M40 10V85" className="art-axis"/>
+              <path d="M45 80Q50 50 80 40T150 25" className="art-curve" fill="none" stroke="var(--blue)"/>
+              <circle cx="70" cy="45" r="3" fill="#fff"/>
+            </svg>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <strong dir="auto">الدالة اللوغاريتمية ln(x)</strong>
+            <small style={{ fontSize: 9, color: 'var(--blue)' }} dir="auto">مجموعة التعريف، المقاربات، والخواص الجبرية</small>
+          </div>
+        </Button>
+        <Button variant="outline" className="template-card" onClick={() => {
+          load(bacIntegralsProject);
+          persistProject(bacIntegralsProject);
+          setNotice('Loaded BAC Integrals & Riemann Sums story');
+        }}>
+          <div className="template-art">
+            <svg viewBox="0 0 160 90">
+              <path d="M10 70H150M80 15V85" className="art-axis"/>
+              <rect x="50" y="45" width="12" height="25" fill="var(--primary)" opacity="0.4"/>
+              <rect x="62" y="40" width="12" height="30" fill="var(--primary)" opacity="0.4"/>
+              <rect x="74" y="38" width="12" height="32" fill="var(--primary)" opacity="0.4"/>
+              <rect x="86" y="40" width="12" height="30" fill="var(--primary)" opacity="0.4"/>
+              <path d="M30 70Q80 15 130 70" className="art-curve" fill="none"/>
+            </svg>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <strong dir="auto">التكامل والمساحات ومجاميع ريمان</strong>
+            <small style={{ fontSize: 9, color: 'var(--primary)' }} dir="auto">حساب المساحة المحصورة ومجاميع ريمان</small>
           </div>
         </Button>
         <Button variant="outline" className="template-card" onClick={() => {
