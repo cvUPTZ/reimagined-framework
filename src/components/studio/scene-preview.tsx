@@ -33,16 +33,13 @@ export function ScenePreview({
   const lineHeight = scene.lineHeight ?? 1.25;
   const textColor = scene.textColor ?? 'default';
   const visual = scene.visual ?? 'curve';
-  const legacyModel = typeof scene.legacy?.['visualModel'] === 'string' ? (scene.legacy['visualModel'] as string) : '';
-  const legacyNode = legacyModel && hasLegacyRenderer(legacyModel)
-    ? renderLegacyVisual({ model: legacyModel, params: scene.legacy?.['visualParams'] as VisualParams | undefined, stage: scene.legacy?.['visualStage'] as VisualStage | undefined, elapsed: elapsed ?? 99, duration: scene.duration })
-    : null;
   const baseTitleY = (portrait ? 218 : 120) + (scene.textY ?? 0);
   const visualY = (portrait ? 376 : 230) + (scene.visualY ?? 0);
   const visualScale = (portrait ? 1 : 0.68) * (scene.visualScale ?? 1);
   const expressionY = (portrait ? 795 : 485) + (scene.expressionY ?? 0);
   const textX = textAlign === 'center' ? width / 2 : textAlign === 'left' ? (portrait ? 36 : 48) : width - (portrait ? 36 : 48);
   const textAnchor = textAlign === 'center' ? 'middle' : textAlign === 'left' ? 'start' : 'end';
+  const legacyModel = typeof scene.legacy?.['visualModel'] === 'string' ? (scene.legacy['visualModel'] as string) : '';
 
   // Ambient continuous clock for studio canvas (skipped in miniature & SSR)
   const [ambientSec, setAmbientSec] = useState(0);
@@ -57,7 +54,6 @@ export function ScenePreview({
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [miniature]);
-
   // Unify timeline playback, manual scrubbing, and ambient idle animation
   const isScrubbingOrPlaying = playing || (elapsed !== undefined && elapsed > 0);
   const animTime = isScrubbingOrPlaying
@@ -65,6 +61,10 @@ export function ScenePreview({
     : miniature
       ? (scene.duration || 5) * 0.4
       : (ambientSec * 0.85) % (scene.duration || 5);
+
+  const legacyNode = legacyModel && hasLegacyRenderer(legacyModel)
+    ? renderLegacyVisual({ model: legacyModel, params: scene.legacy?.['visualParams'] as VisualParams | undefined, stage: scene.legacy?.['visualStage'] as VisualStage | undefined, elapsed: animTime, duration: scene.duration })
+    : null;
 
   const progress = scene.duration > 0
     ? Math.max(0, Math.min(1, animTime / scene.duration))
