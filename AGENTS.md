@@ -15,3 +15,5 @@
 - Render scene artwork through the shared ScenePreview component so sidebar thumbnails and the main canvas always display the same project content.
 - Version and validate project interchange in a dedicated migration module, retaining legacy payloads so unsupported original effects are not silently lost.
 - Compute motion from scene-local time and export the shared ScenePreview artwork through browser canvas and WebCodecs so scrubbing and downloads use the same scene definition.
+- Derive clip geometry and edits through pure timeline helpers; duration-proportional coordinates keep ruler, playhead, trimming, and export synchronized.
+- Bundle artwork fonts locally and embed them in exported SVG frames; self-contained image decoding cannot inherit page web fonts.

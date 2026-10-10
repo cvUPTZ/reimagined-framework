@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, Image, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type StudioProject } from '@/lib/studio';
@@ -10,6 +10,7 @@ export function ExportPanel({ project, time, audioUrl, muted, volume, onProjectD
   const [error, setError] = useState('');
   const [complete, setComplete] = useState(false);
   const controller = useRef<AbortController | null>(null);
+  useEffect(() => () => controller.current?.abort(), []);
   async function render() {
     setError(''); setComplete(false); setProgress(0);
     const abort = new AbortController(); controller.current = abort;
