@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { AudioLines, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clapperboard, Copy, Download, Expand, Eye, EyeOff, Film, FolderOpen, Layers, LayoutTemplate, MoreHorizontal, Pause, Play, Plus, Redo2, RotateCcw, Settings2, ShieldCheck, SkipBack, SlidersHorizontal, Sparkles, Trash2, Type, Undo2, Upload, Volume2, VolumeX, X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { AudioLines, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clapperboard, Copy, Download, Expand, Eye, EyeOff, Film, FolderOpen, Layers, LayoutTemplate, MoreHorizontal, Pause, Play, Plus, Redo2, RotateCcw, Search, Settings2, ShieldCheck, SkipBack, SlidersHorizontal, Sparkles, Trash2, Type, Undo2, Upload, Volume2, VolumeX, X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -10,6 +10,8 @@ import { sceneStart, trimScene } from '@/lib/timeline';
 import { parseProjectFile, projectFile, sceneAtTime } from '@/lib/project-file';
 import { buildScenes, duplicateScene, moveScene, totalDuration, type Scene, type StudioProject } from '@/lib/studio';
 import { phaseNames, phaseOf, phaseClass, referenceProject, timecode } from '@/lib/reference-project';
+import { evaluateMathExpression } from '@/lib/math-engine';
+import { lessonToStudioProject, searchEducationalLessons } from '@/lib/educational-library';
 
 export const Route = createFileRoute('/')({
   head: () => ({ meta: [
@@ -43,12 +45,17 @@ function Studio() {
   const [audioName, setAudioName] = useState('');
   const [notice, setNotice] = useState('');
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [librarySearch, setLibrarySearch] = useState('');
+  const [libraryLevel, setLibraryLevel] = useState('all');
+  const [customBuilderOpen, setCustomBuilderOpen] = useState(false);
   const lastEdit = useRef({ key: '', at: 0 });
   const file = useRef<HTMLInputElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
   const duration = useMemo(() => totalDuration(project.scenes), [project.scenes]);
   const scene = project.scenes[selected] ?? project.scenes[0];
+  const filteredLessons = useMemo(() => searchEducationalLessons(librarySearch, libraryLevel), [librarySearch, libraryLevel]);
+  const formulaValidation = useMemo(() => evaluateMathExpression(scene?.expression ?? project.expression ?? '', 1), [scene?.expression, project.expression]);
   useEffect(() => {
     try { const raw = localStorage.getItem('qed-studio-project-v1'); if (raw) { const result = parseProjectFile(JSON.parse(raw)); setProject(result.project); setImportWarnings(result.warnings); } } catch { setNotice('Your saved project could not be opened. Import a backup to recover it.'); }
     setHydrated(true);
@@ -113,7 +120,7 @@ function Studio() {
         <section className="preview-area"><div className="preview-heading"><div><span className="overline">CANVAS</span><span className="canvas-ratio">{ratio}<span>·</span>{project.format === 'portrait' ? '1080 × 1920' : '1920 × 1080'}</span></div><div className="preview-tools"><select aria-label="Canvas zoom" value={zoom} onChange={e => setZoom(e.target.value)}><option>Fit</option><option>80%</option><option>60%</option></select><IconButton icon={Expand} label="Full screen canvas" onClick={() => void stage.current?.requestFullscreen?.()}/></div></div><div className={`canvas-workspace ${project.format === 'landscape' ? 'canvas-landscape' : ''}`}><div className={`video-stage zoom-${zoom === 'Fit' ? 'fit' : zoom.replace('%','')}`} ref={stage}><ScenePreview key={scene.id} project={project} scene={scene} elapsed={sceneElapsed} safeZones={safeZones}/></div><span className="canvas-scene-label">SCENE {String(selected+1).padStart(2,'0')}<span>/ {String(project.scenes.length).padStart(2,'0')}</span></span></div><div className="playback-bar"><div className="playback-left"><IconButton icon={muted ? VolumeX : Volume2} label="Toggle audio" onClick={() => setMuted(m => !m)}/><span className="preview-quality">HD</span></div><div className="playback-center"><IconButton icon={SkipBack} label="Restart playback" onClick={() => select(0)}/><Button variant="secondary" size="icon" className="play-button" aria-label={playing ? 'Pause' : 'Play'} onClick={() => { if (!playing && time >= duration) select(0); setPlaying(p => !p); }}>{playing ? <Pause size={16}/> : <Play size={16}/>}</Button><span className="time-display">{timecode(time)}<span>/ {timecode(duration)}</span></span></div><span className="live-preview"><span className="live-dot"/>{playing ? 'Playing' : 'Live preview'}</span></div></section>
         <aside className="inspector"><div className="section-heading"><div><SlidersHorizontal size={16}/><h2>Scene properties</h2></div><IconButton icon={MoreHorizontal} label="Duplicate selected scene" onClick={duplicate}/></div><div className="inspector-tabs">{['Content','Layers','Typography','Motion'].map(t => <Button variant="ghost" key={t} className={inspector === t ? 'tab-active' : ''} onClick={() => setInspector(t)}>{t}</Button>)}</div><div className="inspector-content">
           <Field label="Scene name"><input aria-label="Scene name" dir="auto" value={scene.title} onChange={e => edit({ title: e.target.value })}/></Field><div className="field-row"><Field label="Scene type"><select value={phaseOf(scene)} onChange={e => edit({ phase: e.target.value })}>{phaseNames.map(p => <option key={p}>{p}</option>)}</select></Field><Field label="Duration"><div className="suffix-input"><input aria-label="Duration" type="number" min=".1" max="600" step=".1" value={scene.duration} onChange={e => { const n = Number(e.target.value); if (n >= .1 && n <= 600) edit({ duration: n }); }}/><span>sec</span></div></Field></div>
-          {inspector === 'Content' && <><div className="field-section"><Field label="On-screen text" extra="Text layer"><textarea aria-label="On-screen text" dir="auto" rows={3} value={scene.body} onChange={e => edit({ body: e.target.value })}/></Field><div className="text-tools"><span><b>T</b>{scene.fontFamily ?? 'Space Grotesk'}</span><Button variant="ghost" size="sm" onClick={() => setInspector('Typography')}>{scene.fontSize ?? 42} px · {scene.textAlign ?? 'center'}<ChevronDown size={12}/></Button></div></div><div className="field-section"><Field label="Math expression" extra={<i className="math-tag">ƒx</i>}><input aria-label="Math expression" className="formula-input" value={scene.expression ?? project.expression} onChange={e => edit({ expression: e.target.value })}/></Field></div><div className="field-section"><Field label="Visual model"><select value={scene.visual ?? 'curve'} onChange={e => { const visual = e.target.value; if (visual === 'curve' || visual === 'tangent' || visual === 'none') edit({ visual }); }}><option value="curve">Function curve</option><option value="tangent">Tangent & slope</option><option value="none">Text only</option></select></Field><div className="model-miniature"><svg viewBox="0 0 240 65" aria-hidden="true"><path d="M25 50H220M115 8V58" className="art-axis"/><path d="M58 12Q118 85 178 12" fill="none" className="art-curve"/></svg><span>f(x) = x²</span></div></div><div className="field-section"><Field label="Voice-over script" extra={<AudioLines size={14}/>}><textarea rows={3} value={scene.narration ?? scene.body} onChange={e => edit({ narration: e.target.value })}/></Field><Button variant="ghost" className="voice-button" size="sm" onClick={() => { if (!('speechSynthesis' in window)) { setNotice('Speech playback is unavailable.'); return; } speechSynthesis.cancel(); const text = scene.narration ?? scene.body; const u = new SpeechSynthesisUtterance(text); u.lang = /[\u0600-\u06ff]/.test(text) ? 'ar' : 'en-US'; speechSynthesis.speak(u); }}><Play size={12}/>Listen to script</Button></div></>}
+          {inspector === 'Content' && <><div className="field-section"><Field label="On-screen text" extra="Text layer"><textarea aria-label="On-screen text" dir="auto" rows={3} value={scene.body} onChange={e => edit({ body: e.target.value })}/></Field><div className="text-tools"><span><b>T</b>{scene.fontFamily ?? 'Space Grotesk'}</span><Button variant="ghost" size="sm" onClick={() => setInspector('Typography')}>{scene.fontSize ?? 42} px · {scene.textAlign ?? 'center'}<ChevronDown size={12}/></Button></div></div><div className="field-section"><Field label="Math expression" extra={<i className="math-tag">ƒx</i>}><input aria-label="Math expression" className="formula-input" value={scene.expression ?? project.expression} onChange={e => edit({ expression: e.target.value })}/></Field>{formulaValidation.error ? <small style={{ color: 'var(--coral)', fontSize: 9, display: 'block', marginTop: 4 }}>⚠️ {formulaValidation.error}</small> : <small style={{ color: 'var(--primary)', fontSize: 9, display: 'block', marginTop: 4 }}>✓ Valid formula (f(1) = {formulaValidation.value})</small>}</div><div className="field-section"><Field label="Visual model"><select value={scene.visual ?? 'curve'} onChange={e => { const visual = e.target.value as Scene['visual']; edit({ visual }); }}><option value="curve">Function curve f(x) = x²</option><option value="tangent">Tangent & slope f'(x)</option><option value="wave">Trigonometric wave sin(x)</option><option value="exponential">Exponential curve eˣ</option><option value="integral">Definite integral ∫ f(x)dx</option><option value="number-line">Number line & bracket</option><option value="none">Text only</option></select></Field><div className="model-miniature"><svg viewBox="0 0 240 65" aria-hidden="true"><path d="M25 50H220M115 8V58" className="art-axis"/><path d="M58 12Q118 85 178 12" fill="none" className="art-curve"/></svg><span>{scene.visual === 'wave' ? 'sin(x)' : scene.visual === 'exponential' ? 'eˣ' : scene.visual === 'integral' ? '∫ f(x)dx' : scene.visual === 'tangent' ? "f'(x)" : scene.visual === 'number-line' ? '[a, b]' : 'f(x) = x²'}</span></div></div><div className="field-section"><Field label="Voice-over script" extra={<AudioLines size={14}/>}><textarea rows={3} value={scene.narration ?? scene.body} onChange={e => edit({ narration: e.target.value })}/></Field><Button variant="ghost" className="voice-button" size="sm" onClick={() => { if (!('speechSynthesis' in window)) { setNotice('Speech playback is unavailable.'); return; } speechSynthesis.cancel(); const text = scene.narration ?? scene.body; const u = new SpeechSynthesisUtterance(text); u.lang = /[\u0600-\u06ff]/.test(text) ? 'ar' : 'en-US'; speechSynthesis.speak(u); }}><Play size={12}/>Listen to script</Button></div></>}
           {inspector === 'Layers' && <div className="field-section" style={{ marginTop: 12, paddingTop: 0, borderTop: 0 }}>
             <Field label="Canvas layers" extra="Stack & Visibility">
               <div className="layer-list">
@@ -173,7 +180,78 @@ function Studio() {
     <Dialog open={panel !== null} onOpenChange={open => { if (!open) setPanel(null); }}><DialogContent className="studio-modal"><span className="overline">QED STUDIO</span><DialogTitle>{panel ? { projects: 'Your projects', templates: 'Start with a story', library: 'Story & lesson', audio: 'Audio studio', settings: 'Studio settings', export: 'Ready for the world' }[panel] : ''}</DialogTitle><DialogDescription className="sr-only">{panel} options</DialogDescription>
       {panel === 'projects' && <div className="modal-content"><Button variant="outline" onClick={() => file.current?.click()}><Upload size={16}/>Import project</Button><Button variant="outline" onClick={exportProject}><Download size={16}/>Save project file</Button><Button variant="secondary" className="project-option" onClick={() => load(referenceProject)}><Clapperboard size={18}/>The derivative, made visual<ChevronRight size={16}/></Button></div>}
       {panel === 'templates' && <div className="template-grid">{([{ title: 'Visual intuition', type: 'curve' }, { title: 'Tangent & slope', type: 'tangent' }, { title: 'Blank canvas', type: 'none' }] as const).map(t => <Button key={t.title} variant="outline" className="template-card" onClick={() => load({ ...referenceProject, id: crypto.randomUUID(), name: t.title, scenes: t.type === 'none' ? [{ ...referenceProject.scenes[0], id: crypto.randomUUID(), title: 'Untitled scene', body: 'Your story starts here.', expression: '', visual: 'none' } as Scene] : referenceProject.scenes.map(s => ({ ...s, visual: t.type })) })}><div className="template-art">{t.type === 'none' ? <Plus size={30}/> : <svg viewBox="0 0 160 90"><path d="M10 65H150M80 10V85" className="art-axis"/><path d="M30 15Q80 115 130 15" className="art-curve" fill="none"/>{t.type === 'tangent' && <path d="M20 30L125 85" className="art-tangent"/>}</svg>}</div><strong>{t.title}</strong></Button>)}</div>}
-      {panel === 'library' && <div className="modal-content"><Field label="Level"><input value={project.level} onChange={e => commit({ ...project, level: e.target.value })}/></Field><Field label="Topic"><input value={project.topic} onChange={e => commit({ ...project, topic: e.target.value })}/></Field><Field label="Expression"><input value={project.expression} onChange={e => commit({ ...project, expression: e.target.value })}/></Field><Field label="Common mistake"><textarea value={project.mistake} onChange={e => commit({ ...project, mistake: e.target.value })}/></Field><Field label="Correction"><textarea value={project.remediation} onChange={e => commit({ ...project, remediation: e.target.value })}/></Field><Button onClick={() => load({ ...project, scenes: buildScenes(project) })}><Sparkles size={16}/>Build story</Button></div>}
+      {panel === 'library' && <div className="modal-content">
+        <div className="library-search">
+          <div style={{ position: 'relative' }}>
+            <input
+              placeholder="Search mathematics topics, formulas, or concepts…"
+              value={librarySearch}
+              onChange={e => setLibrarySearch(e.target.value)}
+              style={{ paddingLeft: 30 }}
+            />
+            <Search size={14} style={{ position: 'absolute', left: 10, top: 12, color: 'var(--muted-foreground)' }}/>
+          </div>
+        </div>
+        <div className="library-filter-row">
+          {(['all', 'BAC 2026', '2AS', '1AS / 4AM'] as const).map(lvl => (
+            <Button
+              key={lvl}
+              variant={libraryLevel === lvl ? 'secondary' : 'outline'}
+              size="sm"
+              style={{ height: 26, fontSize: 10 }}
+              onClick={() => setLibraryLevel(lvl)}
+            >
+              {lvl === 'all' ? 'All levels' : lvl}
+            </Button>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gap: 10, maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
+          {filteredLessons.map(lesson => (
+            <div key={lesson.id} className="library-card">
+              <div className="library-card-header">
+                <div className="library-card-meta">
+                  <span className="count">{lesson.level}</span>
+                  <span className="count" style={{ color: 'var(--primary)' }}>{lesson.categoryLabel}</span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    load(lessonToStudioProject(lesson));
+                    setNotice(`Loaded lesson: ${lesson.title}`);
+                  }}
+                >
+                  <Sparkles size={13}/>Load lesson
+                </Button>
+              </div>
+              <strong dir="auto">{lesson.title}</strong>
+              <p dir="auto">{lesson.summary}</p>
+              <div className="library-mistake-box" dir="auto">
+                <strong>فخ شائع:</strong>
+                <span>{lesson.mistake}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: 'var(--muted-foreground)' }}>
+                <span className="art-expression" style={{ fontSize: 15 }}>{lesson.expression}</span>
+                <span>Visual: {lesson.visualModel}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+          <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setCustomBuilderOpen(o => !o)}>
+            {customBuilderOpen ? 'Hide custom story builder' : 'Or build a custom lesson from scratch →'}
+          </Button>
+          {customBuilderOpen && (
+            <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+              <Field label="Level"><input value={project.level} onChange={e => commit({ ...project, level: e.target.value })}/></Field>
+              <Field label="Topic"><input value={project.topic} onChange={e => commit({ ...project, topic: e.target.value })}/></Field>
+              <Field label="Expression"><input value={project.expression} onChange={e => commit({ ...project, expression: e.target.value })}/></Field>
+              <Field label="Common mistake"><textarea value={project.mistake} onChange={e => commit({ ...project, mistake: e.target.value })}/></Field>
+              <Field label="Correction"><textarea value={project.remediation} onChange={e => commit({ ...project, remediation: e.target.value })}/></Field>
+              <Button onClick={() => load({ ...project, scenes: buildScenes(project) })}><Sparkles size={16}/>Build story</Button>
+            </div>
+          )}
+        </div>
+      </div>}
       {panel === 'audio' && <div className="modal-content"><label className="audio-upload"><AudioLines size={32}/><strong>{audioName || (project.mediaName ? `Reattach ${project.mediaName}` : 'Add a voice-over or music track')}</strong><input type="file" accept="audio/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; setAudioUrl(URL.createObjectURL(f)); setAudioName(f.name); commit({ ...project, mediaName: f.name }); setMuted(false); }}/></label><Field label="Volume" extra={`${volume}%`}><input type="range" min="0" max="100" value={volume} onChange={e => setVolume(Number(e.target.value))}/></Field><Button variant="outline" onClick={() => setMuted(m => !m)}>{muted ? <VolumeX size={16}/> : <Volume2 size={16}/>} {muted ? 'Enable audio' : 'Mute audio'}</Button></div>}
       {panel === 'settings' && <div className="modal-content"><Field label="Video format"><select value={project.format} onChange={e => commit({ ...project, format: e.target.value as StudioProject['format'] })}><option value="portrait">9:16 · Portrait</option><option value="landscape">16:9 · Landscape</option></select></Field><Button variant="outline" onClick={() => setSafeZones(v => !v)}><ShieldCheck size={16}/>{safeZones ? 'Hide safe zones' : 'Show safe zones'}</Button></div>}
       {panel === 'export' && <div className="modal-content"><div className="export-summary"><Film size={26}/><div><strong>{project.name}</strong><span>{ratio} · {timecode(duration)} · {project.scenes.length} scenes</span></div></div><ExportPanel project={project} time={time} audioUrl={audioUrl} muted={muted} volume={volume} onProjectDownload={exportProject}/><Button variant="outline" onClick={() => file.current?.click()}><FolderOpen size={16}/>Import project</Button></div>}

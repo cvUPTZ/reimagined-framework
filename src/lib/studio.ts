@@ -7,6 +7,7 @@ export type FontWeightType = 400 | 500 | 600 | 700;
 export type TextAlignType = "left" | "center" | "right";
 export type TextColorType = "default" | "primary" | "gold" | "blue" | "coral";
 
+export type VisualModelType = "curve" | "tangent" | "wave" | "exponential" | "integral" | "number-line" | "none";
 export interface Scene {
   id: string;
   title: string;
@@ -24,7 +25,7 @@ export interface Scene {
   lineHeight?: number;
   textColor?: TextColorType;
   textY?: number;
-  visual?: "curve" | "tangent" | "none";
+  visual?: VisualModelType;
   visualY?: number;
   visualScale?: number;
   expression?: string;

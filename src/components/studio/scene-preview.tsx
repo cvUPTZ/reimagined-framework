@@ -40,13 +40,40 @@ export function ScenePreview({ project, scene, safeZones = false, miniature = fa
       {(scene.showPhase ?? true) && <text x={textX} y={baseTitleY - 48} textAnchor={textAnchor} className="art-phase">{phaseOf(scene).toUpperCase()}</text>}
       {(scene.showText ?? true) && <text x={textX} y={baseTitleY + 20} textAnchor={textAnchor} fontSize={fontSize} fontWeight={fontWeight} fontFamily={fontFamily} className={`art-title ${textColor !== 'default' ? `art-text-${textColor}` : ''}`} style={{ fontFamily: `${fontFamily}, sans-serif`, fontWeight }} direction={/[\u0600-\u06ff]/.test(scene.body) ? 'rtl' : 'ltr'}>{lines.slice(0, 4).map((line, i) => <tspan key={i} x={textX} dy={i ? fontSize * lineHeight : 0}>{line}</tspan>)}</text>}
       {(scene.showVisual ?? true) && visual !== 'none' && <g transform={`translate(${width / 2 - 195},${visualY}) scale(${visualScale})`}>
-        <path d="M 0 185 H 390 M 195 24 V 258" className="art-axis"/>
-        {[-3,-2,-1,0,1,2,3].map(n => <g key={n}><path d={`M${195 + n * 57} 180v10`} className="art-axis"/><text x={195 + n * 57} y="207" textAnchor="middle" className="art-axis-label">{n || ''}</text></g>)}
-        <text x="204" y="18" className="art-axis-label">y</text><text x="400" y="190" className="art-axis-label">x</text>
-        <path d="M 80 45 Q 195 325 310 45" className="art-curve" fill="none" pathLength="1" strokeDasharray="1" strokeDashoffset={1 - motion.draw}/>
-        {visual === 'tangent' && <path d="M65 67L245 247" className="art-tangent"/>}
-        <circle cx="138" cy="150" r="5" className="art-point"/>
-        <text x="275" y="66" className="art-function">f(x) = x²</text>
+        {visual === 'number-line' ? (
+          <g>
+            <path d="M 20 140 H 370" className="art-axis"/>
+            <path d="M 15 140 L 25 135 M 15 140 L 25 145 M 375 140 L 365 135 M 375 140 L 365 145" className="art-axis"/>
+            {[-3,-2,-1,0,1,2,3].map(n => <g key={n}><path d={`M${195 + n * 48} 133v14`} className="art-axis"/><text x={195 + n * 48} y="166" textAnchor="middle" className="art-axis-label">{n}</text></g>)}
+            <rect x="195" y="112" width="144" height="24" rx="3" className="art-interval"/>
+            <path d="M 195 106 H 339" className="art-bracket"/>
+            <text x="267" y="96" textAnchor="middle" className="art-function">(3 + 2) × 4 = 20</text>
+          </g>
+        ) : (
+          <g>
+            <path d="M 0 185 H 390 M 195 24 V 258" className="art-axis"/>
+            {[-3,-2,-1,0,1,2,3].map(n => <g key={n}><path d={`M${195 + n * 57} 180v10`} className="art-axis"/><text x={195 + n * 57} y="207" textAnchor="middle" className="art-axis-label">{n || ''}</text></g>)}
+            <text x="204" y="18" className="art-axis-label">y</text><text x="400" y="190" className="art-axis-label">x</text>
+
+            {visual === 'integral' && <path d="M 120 185 L 120 178 Q 195 285 270 178 L 270 185 Z" className="art-area"/>}
+
+            {visual === 'wave' ? (
+              <path d="M 24 185 Q 66 100 110 185 T 195 185 T 280 185 T 366 185" className="art-wave" pathLength="1" strokeDasharray="1" strokeDashoffset={1 - motion.draw}/>
+            ) : visual === 'exponential' ? (
+              <path d="M 20 183 Q 195 183 225 145 T 305 38" className="art-exponential" pathLength="1" strokeDasharray="1" strokeDashoffset={1 - motion.draw}/>
+            ) : (
+              <path d="M 80 45 Q 195 325 310 45" className="art-curve" fill="none" pathLength="1" strokeDasharray="1" strokeDashoffset={1 - motion.draw}/>
+            )}
+
+            {visual === 'tangent' && <path d="M65 67L245 247" className="art-tangent"/>}
+            {visual === 'tangent' && <circle cx="138" cy="150" r="5" className="art-point"/>}
+            {visual === 'exponential' && <circle cx="195" cy="165" r="4" className="art-point"/>}
+
+            <text x="275" y="66" className="art-function">
+              {visual === 'wave' ? 'f(x) = sin(x)' : visual === 'exponential' ? 'f(x) = eˣ' : visual === 'integral' ? '∫[a,b] f(x)dx' : visual === 'tangent' ? "f'(x) = 2x" : 'f(x) = x²'}
+            </text>
+          </g>
+        )}
       </g>}
       {(scene.showExpression ?? true) && (scene.expression ?? project.expression) && <text x={width / 2} y={expressionY} textAnchor="middle" className="art-expression">{scene.expression ?? project.expression}</text>}
     </g>

@@ -14,7 +14,7 @@ const sceneSchema = z.object({
   lineHeight: z.number().positive().finite().optional(),
   textColor: z.enum(['default', 'primary', 'gold', 'blue', 'coral']).optional(),
   textY: z.number().finite().optional(),
-  visual: z.enum(['curve', 'tangent', 'none']).optional(),
+  visual: z.enum(['curve', 'tangent', 'wave', 'exponential', 'integral', 'number-line', 'none']).optional(),
   visualY: z.number().finite().optional(),
   visualScale: z.number().positive().finite().optional(),
   expression: z.string().optional(),
