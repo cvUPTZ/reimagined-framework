@@ -15,7 +15,7 @@ function artworkStyles() {
   const styles = new Map<string, string>();
   document.querySelectorAll('.video-stage svg, .video-stage svg [class]').forEach(element => {
     const css = getComputedStyle(element);
-    const properties = ['fill', 'stroke', 'stroke-width', 'font-family', 'font-style', 'font-size', 'font-weight', 'opacity'];
+    const properties = ['fill', 'stroke', 'stroke-width', 'font-family', 'font-style', 'font-size', 'font-weight'];
     styles.set(element.getAttribute('class') ?? '', properties.map(p => `${p}:${css.getPropertyValue(p)}`).join(';'));
   });
   return styles;
@@ -56,6 +56,7 @@ export async function createFrameRenderer(project: StudioProject, resolution: nu
       // These are dynamic attributes, not CSS-animation state.
       if (element.hasAttribute('opacity')) element.setAttribute('style', `${element.getAttribute('style') ?? ''};opacity:${element.getAttribute('opacity')}`);
       if (element.hasAttribute('font-size')) element.setAttribute('style', `${element.getAttribute('style') ?? ''};font-size:${element.getAttribute('font-size')}px`);
+      if (element.hasAttribute('font-weight')) element.setAttribute('style', `${element.getAttribute('style') ?? ''};font-weight:${element.getAttribute('font-weight')}`);
     });
     const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
     try {
@@ -66,6 +67,7 @@ export async function createFrameRenderer(project: StudioProject, resolution: nu
 }
 
 export async function exportVideo(options: { project: StudioProject; resolution: number; container: 'mp4' | 'webm'; audioUrl: string; volume: number; muted: boolean; signal: AbortSignal; onProgress: (n: number) => void }) {
+  options.signal.throwIfAborted();
   const { Output, Mp4OutputFormat, WebMOutputFormat, BufferTarget, CanvasSource, AudioBufferSource, canEncodeVideo, canEncodeAudio } = await import('mediabunny');
   const renderer = await createFrameRenderer(options.project, options.resolution);
   const { width, height } = renderer.canvas;
@@ -81,6 +83,7 @@ export async function exportVideo(options: { project: StudioProject; resolution:
     try { decoded = await decoder.decodeAudioData(await (await fetch(options.audioUrl)).arrayBuffer()); }
     finally { await decoder.close(); }
     const mixer = new OfflineAudioContext(2, Math.ceil(duration * 48000), 48000);
+    options.signal.throwIfAborted();
     const source = mixer.createBufferSource(); source.buffer = decoded;
     const gain = mixer.createGain(); gain.gain.value = options.volume / 100;
     source.connect(gain); gain.connect(mixer.destination); source.start(0);
