@@ -4,9 +4,30 @@ import { defaultProject, type StudioProject } from './studio';
 const sceneSchema = z.object({
   id: z.string().min(1), title: z.string(), label: z.string(), body: z.string(),
   duration: z.number().positive().finite(), kind: z.enum(['hook', 'explain', 'rule', 'cta']),
-  phase: z.string().optional(), animation: z.enum(['Draw in', 'Fade', 'Slide up', 'None']).optional(),
-  fontSize: z.number().positive().finite().optional(), visual: z.enum(['curve', 'tangent', 'none']).optional(),
-  narration: z.string().optional(), expression: z.string().optional(), legacy: z.record(z.unknown()).optional(),
+  phase: z.string().optional(),
+  animation: z.enum(['Draw in', 'Fade', 'Slide up', 'Slide left', 'Zoom in', 'Wipe', 'None']).optional(),
+  transitionDuration: z.number().positive().finite().optional(),
+  fontSize: z.number().positive().finite().optional(),
+  fontFamily: z.enum(['Space Grotesk', 'Tajawal', 'sans-serif', 'serif']).optional(),
+  fontWeight: z.union([z.literal(400), z.literal(500), z.literal(600), z.literal(700)]).optional(),
+  textAlign: z.enum(['left', 'center', 'right']).optional(),
+  lineHeight: z.number().positive().finite().optional(),
+  textColor: z.enum(['default', 'primary', 'gold', 'blue', 'coral']).optional(),
+  textY: z.number().finite().optional(),
+  visual: z.enum(['curve', 'tangent', 'none']).optional(),
+  visualY: z.number().finite().optional(),
+  visualScale: z.number().positive().finite().optional(),
+  expression: z.string().optional(),
+  expressionY: z.number().finite().optional(),
+  showGrid: z.boolean().optional(),
+  showBrand: z.boolean().optional(),
+  showPhase: z.boolean().optional(),
+  showText: z.boolean().optional(),
+  showVisual: z.boolean().optional(),
+  showExpression: z.boolean().optional(),
+  showFootnote: z.boolean().optional(),
+  narration: z.string().optional(),
+  legacy: z.record(z.unknown()).optional(),
 });
 const projectSchema = z.object({
   id: z.string().min(1), name: z.string(), format: z.enum(['portrait', 'landscape']),
@@ -52,10 +73,27 @@ export function parseProjectFile(input: unknown): { project: StudioProject; warn
       id: s.id, title: s.title, label: s.label, body: s.body, duration: s.duration, kind: s.kind,
       ...(s.phase === undefined ? {} : { phase: s.phase }),
       ...(s.animation === undefined ? {} : { animation: s.animation }),
+      ...(s.transitionDuration === undefined ? {} : { transitionDuration: s.transitionDuration }),
       ...(s.fontSize === undefined ? {} : { fontSize: s.fontSize }),
+      ...(s.fontFamily === undefined ? {} : { fontFamily: s.fontFamily }),
+      ...(s.fontWeight === undefined ? {} : { fontWeight: s.fontWeight }),
+      ...(s.textAlign === undefined ? {} : { textAlign: s.textAlign }),
+      ...(s.lineHeight === undefined ? {} : { lineHeight: s.lineHeight }),
+      ...(s.textColor === undefined ? {} : { textColor: s.textColor }),
+      ...(s.textY === undefined ? {} : { textY: s.textY }),
       ...(s.visual === undefined ? {} : { visual: s.visual }),
-      ...(s.narration === undefined ? {} : { narration: s.narration }),
+      ...(s.visualY === undefined ? {} : { visualY: s.visualY }),
+      ...(s.visualScale === undefined ? {} : { visualScale: s.visualScale }),
       ...(s.expression === undefined ? {} : { expression: s.expression }),
+      ...(s.expressionY === undefined ? {} : { expressionY: s.expressionY }),
+      ...(s.showGrid === undefined ? {} : { showGrid: s.showGrid }),
+      ...(s.showBrand === undefined ? {} : { showBrand: s.showBrand }),
+      ...(s.showPhase === undefined ? {} : { showPhase: s.showPhase }),
+      ...(s.showText === undefined ? {} : { showText: s.showText }),
+      ...(s.showVisual === undefined ? {} : { showVisual: s.showVisual }),
+      ...(s.showExpression === undefined ? {} : { showExpression: s.showExpression }),
+      ...(s.showFootnote === undefined ? {} : { showFootnote: s.showFootnote }),
+      ...(s.narration === undefined ? {} : { narration: s.narration }),
       ...(s.legacy === undefined ? {} : { legacy: s.legacy }),
     })),
   };
@@ -82,8 +120,35 @@ export function sceneAtTime(project: StudioProject, time: number) {
 }
 
 export function sceneMotion(scene: StudioProject['scenes'][number], time?: number) {
-  const progress = time === undefined ? 1 : Math.max(0, Math.min(1, time / .7));
-  return { opacity: scene.animation === 'Fade' || scene.animation === 'Slide up' ? progress : 1,
-    offset: scene.animation === 'Slide up' ? (1 - progress) * 25 : 0,
-    draw: scene.animation === 'Draw in' && time !== undefined ? Math.max(0, Math.min(1, time / 1.6)) : 1 };
+  const duration = scene.transitionDuration ?? 0.7;
+  const progress = time === undefined ? 1 : Math.max(0, Math.min(1, time / duration));
+  const anim = scene.animation ?? 'Fade';
+
+  let opacity = 1;
+  let offsetX = 0;
+  let offsetY = 0;
+  let scale = 1;
+  let wipeProgress = 1;
+
+  if (anim === 'Fade') {
+    opacity = progress;
+  } else if (anim === 'Slide up') {
+    opacity = progress;
+    offsetY = (1 - progress) * 25;
+  } else if (anim === 'Slide left') {
+    opacity = progress;
+    offsetX = (1 - progress) * 45;
+  } else if (anim === 'Zoom in') {
+    opacity = progress;
+    scale = 0.9 + 0.1 * progress;
+  } else if (anim === 'Wipe') {
+    wipeProgress = progress;
+  } else if (anim === 'None') {
+    opacity = 1;
+  }
+
+  const offset = offsetY;
+  const draw = anim === 'Draw in' && time !== undefined ? Math.max(0, Math.min(1, time / 1.6)) : 1;
+
+  return { opacity, offset, offsetX, offsetY, scale, wipeProgress, draw };
 }

@@ -53,11 +53,13 @@ export async function createFrameRenderer(project: StudioProject, resolution: nu
     const style = document.createElementNS('http://www.w3.org/2000/svg', 'style'); style.textContent = sharedCss; svg.prepend(style);
     [svg, ...svg.querySelectorAll('[class]')].forEach(element => {
       const css = styles.get(element.getAttribute('class') ?? '');
-      if (css) element.setAttribute('style', css);
+      const inline = element.getAttribute('style') ?? '';
+      if (css) element.setAttribute('style', inline ? `${css};${inline}` : css);
       // These are dynamic attributes, not CSS-animation state.
       if (element.hasAttribute('opacity')) element.setAttribute('style', `${element.getAttribute('style') ?? ''};opacity:${element.getAttribute('opacity')}`);
       if (element.hasAttribute('font-size')) element.setAttribute('style', `${element.getAttribute('style') ?? ''};font-size:${element.getAttribute('font-size')}px`);
       if (element.hasAttribute('font-weight')) element.setAttribute('style', `${element.getAttribute('style') ?? ''};font-weight:${element.getAttribute('font-weight')}`);
+      if (element.hasAttribute('font-family')) element.setAttribute('style', `${element.getAttribute('style') ?? ''};font-family:${element.getAttribute('font-family')}`);
     });
     const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
     try {

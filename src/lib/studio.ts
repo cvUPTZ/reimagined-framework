@@ -1,6 +1,12 @@
 export type StudioTab = "ideas" | "scenes" | "audio" | "export";
 export type VideoFormat = "portrait" | "landscape";
 
+export type AnimationType = "Draw in" | "Fade" | "Slide up" | "Slide left" | "Zoom in" | "Wipe" | "None";
+export type FontFamilyType = "Space Grotesk" | "Tajawal" | "sans-serif" | "serif";
+export type FontWeightType = 400 | 500 | 600 | 700;
+export type TextAlignType = "left" | "center" | "right";
+export type TextColorType = "default" | "primary" | "gold" | "blue" | "coral";
+
 export interface Scene {
   id: string;
   title: string;
@@ -9,11 +15,28 @@ export interface Scene {
   duration: number;
   kind: "hook" | "explain" | "rule" | "cta";
   phase?: string;
-  animation?: "Draw in" | "Fade" | "Slide up" | "None";
+  animation?: AnimationType;
+  transitionDuration?: number;
   fontSize?: number;
+  fontFamily?: FontFamilyType;
+  fontWeight?: FontWeightType;
+  textAlign?: TextAlignType;
+  lineHeight?: number;
+  textColor?: TextColorType;
+  textY?: number;
   visual?: "curve" | "tangent" | "none";
-  narration?: string;
+  visualY?: number;
+  visualScale?: number;
   expression?: string;
+  expressionY?: number;
+  showGrid?: boolean;
+  showBrand?: boolean;
+  showPhase?: boolean;
+  showText?: boolean;
+  showVisual?: boolean;
+  showExpression?: boolean;
+  showFootnote?: boolean;
+  narration?: string;
   legacy?: Record<string, unknown>;
 }
 
