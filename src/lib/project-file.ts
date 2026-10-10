@@ -23,15 +23,15 @@ const recordSchema = z.record(z.unknown());
 
 export function parseProjectFile(input: unknown): { project: StudioProject; warnings: string[] } {
   const envelope = recordSchema.parse(input);
-  if (typeof envelope.format === 'number' && envelope.format > 2) throw new Error('This project uses a newer file version.');
-  const raw = recordSchema.parse(envelope.project ?? envelope);
-  if (Array.isArray(raw.scenes) && raw.scenes.some(s => recordSchema.parse(s).dur !== undefined)) {
+  if (typeof envelope['format'] === 'number' && envelope['format'] > 2) throw new Error('This project uses a newer file version.');
+  const raw = recordSchema.parse(envelope['project'] ?? envelope);
+  if (Array.isArray(raw['scenes']) && raw['scenes'].some(s => recordSchema.parse(s)['dur'] !== undefined)) {
     const legacy = legacyProjectSchema.parse(raw);
     const phases: Record<string, string> = { hook: 'Hook', diag: 'Diagnosis', intu: 'Intuition', solve: 'Solution', cta: 'End card' };
     const project: StudioProject = {
-      ...defaultProject, id: typeof raw.id === 'string' ? raw.id : 'imported-legacy',
-      name: typeof envelope.name === 'string' ? envelope.name : legacy.title ?? 'Imported project',
-      format: raw.landscape === true || raw.format === 'landscape' ? 'landscape' : 'portrait',
+      ...defaultProject, id: typeof raw['id'] === 'string' ? raw['id'] : 'imported-legacy',
+      name: typeof envelope['name'] === 'string' ? envelope['name'] : legacy.title ?? 'Imported project',
+      format: raw['landscape'] === true || raw['format'] === 'landscape' ? 'landscape' : 'portrait',
       expression: '', legacy: raw,
       scenes: legacy.scenes.map((s, i) => {
         const body = [s.txt ?? '', ...(s.texts ?? []).map(t => t.t)].filter(Boolean).join('\n');
@@ -42,7 +42,23 @@ export function parseProjectFile(input: unknown): { project: StudioProject; warn
     };
     return { project, warnings: ['Original text, timing and narration imported. Original layers, effects, visuals and brand data are preserved in the file, but are not yet reproduced on the canvas.'] };
   }
-  const project = projectSchema.parse(raw);
+  const parsed = projectSchema.parse(raw);
+  const project: StudioProject = {
+    id: parsed.id, name: parsed.name, format: parsed.format, topic: parsed.topic, level: parsed.level,
+    mistake: parsed.mistake, expression: parsed.expression, remediation: parsed.remediation, cta: parsed.cta,
+    ...(parsed.legacy === undefined ? {} : { legacy: parsed.legacy }),
+    ...(parsed.mediaName === undefined ? {} : { mediaName: parsed.mediaName }),
+    scenes: parsed.scenes.map(s => ({
+      id: s.id, title: s.title, label: s.label, body: s.body, duration: s.duration, kind: s.kind,
+      ...(s.phase === undefined ? {} : { phase: s.phase }),
+      ...(s.animation === undefined ? {} : { animation: s.animation }),
+      ...(s.fontSize === undefined ? {} : { fontSize: s.fontSize }),
+      ...(s.visual === undefined ? {} : { visual: s.visual }),
+      ...(s.narration === undefined ? {} : { narration: s.narration }),
+      ...(s.expression === undefined ? {} : { expression: s.expression }),
+      ...(s.legacy === undefined ? {} : { legacy: s.legacy }),
+    })),
+  };
   const ids = new Set(project.scenes.map(s => s.id));
   if (ids.size !== project.scenes.length) throw new Error('Scene identifiers must be unique.');
   return { project, warnings: project.mediaName ? [`Reattach ${project.mediaName} to restore audio. Project files do not embed media.`] : [] };
