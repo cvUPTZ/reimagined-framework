@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ScenePreview } from '@/components/studio/scene-preview';
 import { sceneAtTime } from './project-file';
 import { totalDuration, type StudioProject } from './studio';
+import { embeddedArtworkFonts } from './artwork-fonts';
 
 export function downloadBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -43,7 +44,7 @@ export async function createFrameRenderer(project: StudioProject, resolution: nu
   const context = canvas.getContext('2d');
   if (!context) throw new Error('Canvas rendering is unavailable in this browser.');
   const styles = artworkStyles();
-  const sharedCss = sharedArtworkCss();
+  const sharedCss = `${await embeddedArtworkFonts()}\n${sharedArtworkCss()}`;
   return { canvas, async draw(time: number) {
     const position = sceneAtTime(project, time);
     const markup = renderToStaticMarkup(createElement(ScenePreview, { project, scene: position.scene, elapsed: position.localTime }));
