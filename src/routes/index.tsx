@@ -9,7 +9,7 @@ import { TimelineEditor } from '@/components/studio/timeline-editor';
 import { sceneStart, trimScene } from '@/lib/timeline';
 import { parseProjectFile, projectFile, sceneAtTime } from '@/lib/project-file';
 import { buildScenes, defaultBrandKits, duplicateScene, moveScene, totalDuration, type Scene, type StudioProject } from '@/lib/studio';
-import { phaseNames, phaseOf, phaseClass, referenceProject, timecode } from '@/lib/reference-project';
+import { phaseNames, phaseOf, phaseClass, referenceProject, threeBlueOneBrownProject, originalZipProject, timecode } from '@/lib/reference-project';
 import { evaluateMathExpression } from '@/lib/math-engine';
 import { lessonToStudioProject, searchEducationalLessons } from '@/lib/educational-library';
 import { listProjects, getProject, saveProject as persistProject, deleteProject as removeStoredProject, duplicateProject as cloneStoredProject, searchProjects, listSnapshots, createSnapshot, type ProjectMeta, type ProjectSnapshot } from '@/lib/project-store';
@@ -338,13 +338,27 @@ function Studio() {
             </div>
           )}
         </div>
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'grid', gap: 6 }}>
           <Button variant="secondary" className="project-option w-full" onClick={() => {
+            load(threeBlueOneBrownProject);
+            persistProject(threeBlueOneBrownProject);
+            setNotice('Loaded 3Blue1Brown dynamic calculus project');
+          }}>
+            <Sparkles size={18}/>3Blue1Brown — Calculus & Moving Tangent<ChevronRight size={16}/>
+          </Button>
+          <Button variant="secondary" className="project-option w-full" onClick={() => {
+            load(originalZipProject);
+            persistProject(originalZipProject);
+            setNotice('Loaded original BAC 2026 style project');
+          }}>
+            <BookOpen size={18}/>أولوية العمليات — Original BAC Style<ChevronRight size={16}/>
+          </Button>
+          <Button variant="ghost" className="project-option w-full" onClick={() => {
             load(referenceProject);
             persistProject(referenceProject);
             setNotice('Loaded reference demo');
           }}>
-            <Clapperboard size={18}/>The derivative, made visual (Reference Demo)<ChevronRight size={16}/>
+            <Clapperboard size={18}/>The derivative, made visual (QED Classic)<ChevronRight size={16}/>
           </Button>
         </div>
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
@@ -385,7 +399,88 @@ function Studio() {
           )}
         </div>
       </div>}
-      {panel === 'templates' && <div className="template-grid">{([{ title: 'Visual intuition', type: 'curve' }, { title: 'Tangent & slope', type: 'tangent' }, { title: 'Blank canvas', type: 'none' }] as const).map(t => <Button key={t.title} variant="outline" className="template-card" onClick={() => load({ ...referenceProject, id: crypto.randomUUID(), name: t.title, scenes: t.type === 'none' ? [{ ...referenceProject.scenes[0], id: crypto.randomUUID(), title: 'Untitled scene', body: 'Your story starts here.', expression: '', visual: 'none' } as Scene] : referenceProject.scenes.map(s => ({ ...s, visual: t.type })) })}><div className="template-art">{t.type === 'none' ? <Plus size={30}/> : <svg viewBox="0 0 160 90"><path d="M10 65H150M80 10V85" className="art-axis"/><path d="M30 15Q80 115 130 15" className="art-curve" fill="none"/>{t.type === 'tangent' && <path d="M20 30L125 85" className="art-tangent"/>}</svg>}</div><strong>{t.title}</strong></Button>)}</div>}
+      {panel === 'templates' && <div className="template-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+        <Button variant="outline" className="template-card" onClick={() => {
+          load(threeBlueOneBrownProject);
+          persistProject(threeBlueOneBrownProject);
+          setNotice('Loaded 3Blue1Brown Calculus story');
+        }}>
+          <div className="template-art">
+            <svg viewBox="0 0 160 90">
+              <path d="M10 65H150M80 10V85" className="art-axis"/>
+              <path d="M20 70Q80 10 140 70" className="art-curve" fill="none"/>
+              <line x1="45" y1="25" x2="115" y2="65" stroke="var(--blue)" strokeWidth="2" strokeDasharray="4 2"/>
+              <circle cx="80" cy="45" r="4" fill="#fff"/>
+            </svg>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <strong>3Blue1Brown — Dynamic Calculus</strong>
+            <small style={{ fontSize: 9, color: 'var(--primary)' }}>Moving tangent, Riemann sums & phasor</small>
+          </div>
+        </Button>
+        <Button variant="outline" className="template-card" onClick={() => {
+          load(originalZipProject);
+          persistProject(originalZipProject);
+          setNotice('Loaded original BAC 2026 style story');
+        }}>
+          <div className="template-art">
+            <svg viewBox="0 0 160 90">
+              <path d="M10 50H150" className="art-axis"/>
+              <rect x="25" y="40" width="45" height="15" rx="2" className="art-interval"/>
+              <path d="M70 45Q105 15 135 45" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeDasharray="3 2"/>
+              <circle cx="135" cy="50" r="3" fill="var(--gold)"/>
+            </svg>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <strong>أولوية العمليات (Original BAC)</strong>
+            <small style={{ fontSize: 9, color: 'var(--gold)' }}>Misconceptions, number lines & step-by-step</small>
+          </div>
+        </Button>
+        <Button variant="outline" className="template-card" onClick={() => {
+          load(referenceProject);
+          persistProject(referenceProject);
+          setNotice('Loaded QED Classic story');
+        }}>
+          <div className="template-art">
+            <svg viewBox="0 0 160 90">
+              <path d="M10 65H150M80 10V85" className="art-axis"/>
+              <path d="M30 15Q80 115 130 15" className="art-curve" fill="none"/>
+            </svg>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <strong>QED Classic — The Derivative</strong>
+            <small style={{ fontSize: 9, color: 'var(--muted-foreground)' }}>Parabolic curve and tangent slopes</small>
+          </div>
+        </Button>
+        <Button variant="outline" className="template-card" onClick={() => {
+          const blank: StudioProject = {
+            ...referenceProject,
+            id: `project-${crypto.randomUUID()}`,
+            name: 'Blank Canvas Story',
+            scenes: [{
+              id: crypto.randomUUID(),
+              label: '01',
+              title: 'Untitled scene',
+              body: 'Your mathematical perspective starts here.',
+              duration: 5,
+              kind: 'explain',
+              phase: 'Intuition',
+              animation: 'Fade',
+              visual: 'none',
+              fontSize: 42,
+            }],
+          };
+          load(blank);
+          persistProject(blank);
+          setNotice('Started blank canvas');
+        }}>
+          <div className="template-art"><Plus size={28}/></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <strong>Blank Canvas</strong>
+            <small style={{ fontSize: 9, color: 'var(--muted-foreground)' }}>Build a new lesson from scratch</small>
+          </div>
+        </Button>
+      </div>}
       {panel === 'library' && <div className="modal-content">
         <div className="library-search">
           <div style={{ position: 'relative' }}>
