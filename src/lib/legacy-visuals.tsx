@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { clipDiagramLine, diagramReveal, DIAGRAM_BOUNDS } from './diagram-geometry';
 
 /**
  * SVG ports of the original canvas "visual intuition" models (js/04-visual-intuition.js).
@@ -19,15 +20,11 @@ export interface LegacyVisualInput {
   duration: number;
 }
 
-// 3Blue1Brown vibrant luminous palette (r,g,b)
-const TE = '56,189,248'; // 3B1B Cyan / Sky Blue
-const VI = '129,140,248'; // 3B1B Indigo / Purple
-const AM = '251,191,36'; // 3B1B Gold / Amber
-const RD = '248,113,113'; // 3B1B Soft Coral / Red
-const WH = '248,250,252'; // Crisp White
-const BL = '96,165,250'; // Bright Blue
-const PK = '244,114,182'; // Rose Pink
-const EM = '52,211,153'; // Emerald Green
+// Semantic artwork colors are shared with the editor and standalone export.
+const TE = 'var(--blue)', VI = 'var(--primary)', AM = 'var(--gold)';
+const RD = 'var(--coral)', WH = 'var(--foreground)', BL = 'var(--blue)';
+const PK = 'var(--violet)', EM = 'var(--primary)';
+const ink = (color: string, opacity: number) => `color-mix(in oklab, ${color} ${Math.max(0, Math.min(1, opacity)) * 100}%, transparent)`;
 
 // local box (the host scales/translates it): 390 wide, ~400 tall, same proportions as the canvas version
 const W = 390, CX = 195, BW = 360, BH = 400, CY = 200;
@@ -48,10 +45,10 @@ interface Kit {
   poly(points: Array<[number, number]>, c0: string, fa: number, sa: number, lw?: number): void;
 }
 
-function makeKit(al: number): Kit {
+function makeKit(al: number, reveal = 1): Kit {
   const els: ReactNode[] = [];
   let n = 0;
-  const C = (c0: string, q: number) => `rgba(${c0},${Math.max(0, Math.min(1, q * al))})`;
+  const C = (c0: string, q: number) => ink(c0, q * al);
   const hasAr = (s: string) => /[\u0600-\u06FF]/.test(s);
   return {
     els,
@@ -84,6 +81,9 @@ function makeKit(al: number): Kit {
       );
     },
     ln: (x1, y1, x2, y2, c0, q, lw = 2) => {
+      const clipped = clipDiagramLine([x1, y1], [x2, y2]);
+      if (!clipped) return;
+      [[x1, y1], [x2, y2]] = clipped;
       els.push(
         <line
           key={n++}
@@ -101,16 +101,16 @@ function makeKit(al: number): Kit {
       els.push(
         <text
           key={n++}
-          x={x}
-          y={y}
-          fontSize={size}
-          fontWeight={800}
+          x={Math.max(42, Math.min(348, x))}
+          y={Math.max(50, Math.min(320, y))}
+          fontSize={Math.max(14, size)}
+          fontWeight={600}
           fontFamily="Tajawal, Cairo, sans-serif"
           textAnchor="middle"
           dominantBaseline="central"
           fill={C(c0, q)}
-          stroke="rgba(8,12,18,0.92)"
-          strokeWidth={3.5}
+          stroke="var(--canvas-background)"
+          strokeWidth={4}
           paintOrder="stroke"
           direction={hasAr(s) ? 'rtl' : 'ltr'}
         >
@@ -119,16 +119,23 @@ function makeKit(al: number): Kit {
       );
     },
     poly: (pts, c0, fa, sa, lw = 2) => {
-      els.push(
-        <polygon
-          key={n++}
-          points={pts.map(p => p.join(',')).join(' ')}
-          fill={fa ? C(c0, fa) : 'none'}
-          stroke={sa ? C(c0, sa) : 'none'}
-          strokeWidth={lw}
-          strokeLinejoin="round"
-        />,
-      );
+      if (!fa && pts.length > 3) {
+        const segments: string[] = [];
+        let previous: [number, number] | undefined;
+        for (let i = 1; i < pts.length; i++) {
+          const start = pts[i - 1], end = pts[i];
+          if (!start || !end) continue;
+          const segment = clipDiagramLine(start, end);
+          if (!segment) { previous = undefined; continue; }
+          const [from, to] = segment;
+          if (!previous || Math.abs(previous[0] - from[0]) > 0.01 || Math.abs(previous[1] - from[1]) > 0.01) segments.push(`M ${from.join(' ')}`);
+          segments.push(`L ${to.join(' ')}`);
+          previous = [to[0], to[1]];
+        }
+        els.push(<path key={n++} d={segments.join(' ')} fill="none" stroke={C(c0, sa)} strokeWidth={lw} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - reveal} className="art-diagram-curve" />);
+      } else {
+        els.push(<polygon key={n++} points={pts.map(p => p.join(',')).join(' ')} fill={fa ? C(c0, fa) : 'none'} stroke={sa ? C(c0, sa) : 'none'} strokeWidth={lw} strokeLinejoin="round" />);
+      }
     },
   };
 }
@@ -197,7 +204,7 @@ const stair: Model = ({ kit, a: P, b: Q, c, st, p, pulse }) => {
   const X = (z: number) => px0 + (z - lo) / (hi - lo) * sqz, Y = (z: number) => py0 + sqz - (z - lo) / (hi - lo) * sqz;
   const n = st === 'move' ? Math.ceil(p * N - 1e-6) : st === 'predict' ? 0 : N;
   const u = (i: number) => U[i] ?? 0;
-  kit.box(px0, py0, sqz, sqz, WH, 0.03, 0.4, 1);
+
   if (lo < 0 && hi > 0) { kit.ln(px0, Y(0), px0 + sqz, Y(0), WH, 0.35, 1); kit.ln(X(0), py0, X(0), py0 + sqz, WH, 0.35, 1); }
   const clipId = 'stair-clip';
   kit.els.push(<clipPath key="cp" id={clipId}><rect x={px0} y={py0} width={sqz} height={sqz} /></clipPath>);
@@ -253,13 +260,13 @@ const venn: Model = ({ kit, a, b, c, st, p, pulse }) => {
   const pa = a, pb = b, pi = c, r = BW * 0.27, dd = r * (2 - 1.5 * Math.min(1, pi / Math.min(pa, pb))), ax = CX - dd / 2, bx = CX + dd / 2, vy = MY - 34;
   const g = st === 'predict' ? 0 : st === 'move' ? p : 1;
   kit.els.push(
-    <circle key="ca" cx={ax} cy={vy} r={r} fill={`rgba(${VI},0.28)`} stroke={`rgba(${VI},0.95)`} strokeWidth={2.5} />,
-    <circle key="cb" cx={bx} cy={vy} r={r} fill={`rgba(${TE},0.28)`} stroke={`rgba(${TE},0.95)`} strokeWidth={2.5} />,
+    <circle key="ca" cx={ax} cy={vy} r={r} fill={ink(VI, 0.28)} stroke={ink(VI, 0.95)} strokeWidth={2.5} />,
+    <circle key="cb" cx={bx} cy={vy} r={r} fill={ink(TE, 0.28)} stroke={ink(TE, 0.95)} strokeWidth={2.5} />,
   );
   if (g > 0) {
     kit.els.push(
       <clipPath key="vc" id="venn-clip"><circle cx={ax} cy={vy} r={r} /></clipPath>,
-      <circle key="vi" cx={bx} cy={vy} r={r} clipPath="url(#venn-clip)" fill={`rgba(${RD},${g * (0.4 + 0.3 * pulse)})`} />,
+      <circle key="vi" cx={bx} cy={vy} r={r} clipPath="url(#venn-clip)" fill={ink(RD, ${g * (0.4 + 0.3 * pulse)})} />,
     );
   }
   kit.tx('A', ax - r * 0.55, vy, 24, WH, 0.9); kit.tx('B', bx + r * 0.55, vy, 24, WH, 0.9);
@@ -328,9 +335,19 @@ function plotFrame(kit: Kit, f: (x: number) => number, xLo: number, xHi: number,
   const yLo = Math.min(...ys, 0), yHi = Math.max(...ys, 0), pad = (yHi - yLo) * 0.12 + 0.4;
   const X = (x: number) => px0 + (x - xLo) / (xHi - xLo) * sqz;
   const Y = (y: number) => py0 + sqz - (y - (yLo - pad)) / (yHi - yLo + 2 * pad) * sqz;
-  kit.box(px0, py0, sqz, sqz, WH, 0.03, 0.4, 1);
-  if (yLo < 0 && yHi > 0) kit.ln(px0, Y(0), px0 + sqz, Y(0), WH, 0.35, 1);
-  if (xLo < 0 && xHi > 0) kit.ln(X(0), py0, X(0), py0 + sqz, WH, 0.35, 1);
+
+  const axisY = Y(0), axisX = X(Math.max(xLo, Math.min(xHi, 0)));
+  kit.ln(px0, axisY, px0 + sqz, axisY, WH, 0.5, 1.3);
+  kit.poly([[px0 + sqz, axisY], [px0 + sqz - 7, axisY - 4], [px0 + sqz - 7, axisY + 4]], WH, 0.6, 0);
+  kit.tx('x', px0 + sqz - 4, axisY + 26, 14, WH, 0.7);
+  kit.ln(axisX, py0, axisX, py0 + sqz, WH, 0.5, 1.3);
+  kit.tx('y', axisX - 14, py0 + 8, 14, WH, 0.7);
+  const tickStep = Math.max(1, Math.ceil((xHi - xLo) / 7));
+  for (let x = Math.ceil(xLo / tickStep) * tickStep; x < xHi; x += tickStep) {
+    kit.ln(X(x), axisY - 4, X(x), axisY + 4, WH, 0.45, 1);
+    kit.tx(String(f1(x)), X(x), axisY + 18, 14, WH, 0.65);
+  }
+
   const pts: Array<[number, number]> = [];
   for (let i = 0; i <= 60; i++) { const x = xLo + (xHi - xLo) * i / 60, y = f(x); if (Number.isFinite(y) && Math.abs(y) < 1e4) pts.push([X(x), Y(y)]); }
   if (pts.length > 1) kit.poly(pts, curveColor, 0, curveQ, 3);
@@ -338,21 +355,29 @@ function plotFrame(kit: Kit, f: (x: number) => number, xLo: number, xHi: number,
 }
 
 /** Secant → tangent zoom on y = x²/4 at x₀ = a (3B1B derivative classic). */
-const tangent: Model = ({ kit, a, st, p, pulse }) => {
+const tangent: Model = ({ kit, a, st, p, u }) => {
   const f = (x: number) => x * x / 4, df = (x: number) => x / 2;
   const x0 = Math.max(0.5, Math.min(3, a || 1));
   const { X, Y } = plotFrame(kit, f, -3.6, 3.6, VI, 0.95);
   const h = st === 'move' ? 2.4 * (1 - p) + 0.12 : st === 'predict' ? 2.4 : 0.0001;
-  const x1 = x0 + h;
-  const slope = st === 'observe' || st === 'general' || h < 0.2 ? df(x0) : (f(x1) - f(x0)) / h;
+  const x1 = Math.min(3.4, x0 + h);
+  const slope = st === 'observe' || st === 'general' || h < 0.2 ? df(x0) : (f(x1) - f(x0)) / (x1 - x0);
   const line = (m: number, through: number, c0: string, q: number, lw: number) => {
     const yA = f(through) + m * (-3.4 - through), yB = f(through) + m * (3.4 - through);
     kit.ln(X(-3.4), Y(yA), X(3.4), Y(yB), c0, q, lw);
   };
   if (st === 'predict' || st === 'move') { line(slope, x0, TE, 0.9, 2.5); kit.dot(X(x1), Y(f(x1)), 7, TE, 0.95); }
-  line(df(x0), x0, AM, st === 'predict' ? 0.25 : 0.95, 2.5);
+  const annotationQ = diagramReveal(u, 1, 0.28);
+  line(df(x0), x0, AM, st === 'predict' ? 0 : 0.95 * annotationQ, 2.8);
   kit.dot(X(x0), Y(f(x0)), 8, AM, 1);
-  if (st === 'observe') kit.tx('الميل = f′(x₀)', X(x0) + 66, Y(f(x0)) - 26, 13, AM, 0.6 + 0.4 * pulse);
+  if (st !== 'predict' && annotationQ > 0) {
+    const right = Math.min(3.3, x0 + 0.9), rise = df(x0) * (right - x0);
+    kit.ln(X(x0), Y(f(x0)), X(right), Y(f(x0)), TE, annotationQ, 2.5);
+    kit.ln(X(right), Y(f(x0)), X(right), Y(f(x0) + rise), AM, annotationQ, 2.5);
+    kit.tx('Δx', (X(x0) + X(right)) / 2, Y(f(x0)) + 24, 14, TE, annotationQ);
+    kit.tx('Δy', X(right) + 20, (Y(f(x0)) + Y(f(x0) + rise)) / 2, 14, AM, annotationQ);
+    kit.tx(`f′(${f1(x0)}) = ${f1(df(x0))}`, CX, TOP + 28, 18, AM, annotationQ);
+  }
   return {
     readout: st === 'predict' ? `الميل عند x=${f1(x0)} ؟` : st === 'move' ? `h = ${f1(h)}  ⇒  ميل ≈ ${f1(slope)}` : `f′(${f1(x0)}) = ${f1(df(x0))}`,
     formula: `f′(x₀) = lim(h→0) (f(x₀+h) − f(x₀)) / h`,
@@ -474,7 +499,7 @@ const thales: Model = ({ kit, st, p, pulse }) => {
   const r = Math.min(BW, MH) * 0.36, cy = MY + 30, ax = CX - r, bx = CX + r;
   const t = st === 'move' ? 0.25 + 0.5 * p : 0.55;
   const cxp = CX + r * Math.cos(Math.PI * (1 - t)), cyp = cy - r * Math.sin(Math.PI * (1 - t));
-  kit.els.push(<path key="semi" d={`M ${ax} ${cy} A ${r} ${r} 0 0 1 ${bx} ${cy}`} fill="none" stroke={`rgba(${VI},0.95)`} strokeWidth={3} />);
+  kit.els.push(<path key="semi" d={`M ${ax} ${cy} A ${r} ${r} 0 0 1 ${bx} ${cy}`} fill="none" stroke={ink(VI, 0.95)} strokeWidth={3} />);
   kit.ln(ax, cy, bx, cy, WH, 0.8, 2.5);
   kit.ln(ax, cy, cxp, cyp, TE, 0.95, 2.5);
   kit.ln(bx, cy, cxp, cyp, AM, 0.95, 2.5);
@@ -594,10 +619,10 @@ const waveModel: Model = ({ kit, st, p, pulse }) => {
   const theta = (st === 'move' ? p : st === 'predict' ? 0.15 : 1) * Math.PI * 2 * 1.5 + 0.4;
   const px = ccx + r * Math.cos(theta), py = ccy - r * Math.sin(theta);
   // circle + rotating radius
-  kit.els.push(<circle key="uc" cx={ccx} cy={ccy} r={r} fill="none" stroke={`rgba(${VI},0.9)`} strokeWidth={2.5} />);
+  kit.els.push(<circle key="uc" cx={ccx} cy={ccy} r={r} fill="none" stroke={ink(VI, 0.9)} strokeWidth={2.5} />);
   kit.ln(ccx, ccy, px, py, AM, 0.95, 3);
   kit.dot(px, py, 7, AM, 1);
-  kit.els.push(<path key="arc" d={`M ${ccx + r * 0.4} ${ccy} A ${r * 0.4} ${r * 0.4} 0 ${theta % (2 * Math.PI) > Math.PI ? 1 : 0} 0 ${ccx + r * 0.4 * Math.cos(theta)} ${ccy - r * 0.4 * Math.sin(theta)}`} fill="none" stroke={`rgba(${AM},0.8)`} strokeWidth={2} />);
+  kit.els.push(<path key="arc" d={`M ${ccx + r * 0.4} ${ccy} A ${r * 0.4} ${r * 0.4} 0 ${theta % (2 * Math.PI) > Math.PI ? 1 : 0} 0 ${ccx + r * 0.4 * Math.cos(theta)} ${ccy - r * 0.4 * Math.sin(theta)}`} fill="none" stroke={ink(AM, 0.8)} strokeWidth={2} />);
   kit.tx('θ', ccx + r * 0.55, ccy - 14, 13, AM, 0.9);
   // sine wave to the right, traced up to theta
   const wx0 = CX + BW * 0.02, wx1 = CX + BW * 0.44, wy = ccy;
@@ -698,88 +723,16 @@ export function renderLegacyVisual(input: LegacyVisualInput): ReactNode | null {
   const p = st === 'move' ? ez(Math.min(1, u * 1.08)) : st === 'predict' ? 0 : 1;
   const pulse = 0.6 + 0.4 * Math.sin(input.elapsed * 5);
   const al = ez(clamp01(input.elapsed / 0.6));
-  const kit = makeKit(al);
+  const kit = makeKit(al, diagramReveal(input.elapsed, dur));
   const res = model({ kit, a, b, c, params: v, st, p, pulse, u });
   const bad = res.bad;
   return (
     <g data-legacy-model={input.model} className="legacy-3b1b-visual">
-      {/* 3B1B Luminous Model Backdrop Grid Frame */}
-      <rect
-        x={CX - BW / 2}
-        y={TOP - 10}
-        width={BW}
-        height={MH + 60}
-        rx={12}
-        fill="rgba(15, 23, 42, 0.45)"
-        stroke="rgba(56, 189, 248, 0.2)"
-        strokeWidth={1.2}
-      />
-      {kit.els}
-      {res.readout ? (() => {
-        const textLen = res.readout.length;
-        const pillW = Math.min(344, Math.max(160, textLen * 11.5 + 32));
-        const pillFont = textLen > 24 ? 14 : textLen > 18 ? 16 : 19;
-        return (
-          <g transform={`translate(${CX}, 14)`}>
-            <rect
-              x={-pillW / 2}
-              y={-18}
-              width={pillW}
-              height={34}
-              rx={8}
-              fill="rgba(8, 12, 20, 0.88)"
-              stroke={bad ? 'rgba(248, 113, 113, 0.85)' : 'rgba(56, 189, 248, 0.75)'}
-              strokeWidth={1.5}
-            />
-            <text
-              x={0}
-              y={5}
-              fontSize={pillFont}
-              fontWeight={800}
-              fontFamily="Tajawal, Cairo, sans-serif"
-              textAnchor="middle"
-              fill={`rgba(${bad ? RD : WH},${al})`}
-              stroke="rgba(8,12,18,0.9)"
-              strokeWidth={3}
-              paintOrder="stroke"
-              style={{ unicodeBidi: "plaintext" }}
-            >
-              {res.readout}
-            </text>
-          </g>
-        );
-      })() : null}
-      {res.formula && st === 'general' ? (() => {
-        const formulaLen = res.formula.length;
-        const pillW = Math.min(348, Math.max(180, formulaLen * 8.2 + 28));
-        const formulaFont = formulaLen > 36 ? 11 : formulaLen > 28 ? 12.5 : 13.5;
-        return (
-          <g transform={`translate(${CX}, ${TOP + MH + 50})`}>
-            <rect
-              x={-pillW / 2}
-              y={-14}
-              width={pillW}
-              height={28}
-              rx={6}
-              fill="rgba(8, 12, 20, 0.85)"
-              stroke="rgba(251, 191, 36, 0.75)"
-              strokeWidth={1.2}
-            />
-            <text
-              x={0}
-              y={4}
-              fontSize={formulaFont}
-              fontWeight={800}
-              fontFamily="Tajawal, Cairo, sans-serif"
-              textAnchor="middle"
-              fill={`rgba(${AM},${al})`}
-              style={{ unicodeBidi: "plaintext" }}
-            >
-              {res.formula}
-            </text>
-          </g>
-        );
-      })() : null}
+      <svg x="0" y="48" width="390" height="278" viewBox="0 48 390 278" overflow="hidden">
+        {kit.els}
+      </svg>
+      {res.readout && <text x={CX} y="18" textAnchor="middle" fontSize={res.readout.length > 36 ? 15 : 18} fontWeight={600} fontFamily="Tajawal, sans-serif" fill={bad ? RD : WH} opacity={al} style={{ unicodeBidi: 'plaintext' }}>{res.readout}</text>}
+      {res.formula && st === 'general' && <text x={CX} y="365" textAnchor="middle" fontSize={res.formula.length > 40 ? 14 : 17} fontFamily="Tajawal, sans-serif" fill={AM} opacity={diagramReveal(input.elapsed, dur, 0.5)} style={{ unicodeBidi: 'plaintext' }}>{res.formula}</text>}
     </g>
   );
 }
