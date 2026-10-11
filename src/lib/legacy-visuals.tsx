@@ -385,7 +385,7 @@ export function renderLegacyVisual(input: LegacyVisualInput): ReactNode | null {
               stroke="rgba(8,12,18,0.9)"
               strokeWidth={3}
               paintOrder="stroke"
-              dir="auto"
+              style={{ unicodeBidi: "plaintext" }}
             >
               {res.readout}
             </text>
@@ -416,7 +416,7 @@ export function renderLegacyVisual(input: LegacyVisualInput): ReactNode | null {
               fontFamily="Tajawal, Cairo, sans-serif"
               textAnchor="middle"
               fill={`rgba(${AM},${al})`}
-              dir="auto"
+              style={{ unicodeBidi: "plaintext" }}
             >
               {res.formula}
             </text>
