@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { clipDiagramLine, diagramReveal, DIAGRAM_BOUNDS } from './diagram-geometry';
+import { clipDiagramLine, diagramReveal, openDiagramPath } from './diagram-geometry';
 
 /**
  * SVG ports of the original canvas "visual intuition" models (js/04-visual-intuition.js).
@@ -120,19 +120,7 @@ function makeKit(al: number, reveal = 1): Kit {
     },
     poly: (pts, c0, fa, sa, lw = 2) => {
       if (!fa && pts.length > 3) {
-        const segments: string[] = [];
-        let previous: [number, number] | undefined;
-        for (let i = 1; i < pts.length; i++) {
-          const start = pts[i - 1], end = pts[i];
-          if (!start || !end) continue;
-          const segment = clipDiagramLine(start, end);
-          if (!segment) { previous = undefined; continue; }
-          const [from, to] = segment;
-          if (!previous || Math.abs(previous[0] - from[0]) > 0.01 || Math.abs(previous[1] - from[1]) > 0.01) segments.push(`M ${from.join(' ')}`);
-          segments.push(`L ${to.join(' ')}`);
-          previous = [to[0], to[1]];
-        }
-        els.push(<path key={n++} d={segments.join(' ')} fill="none" stroke={C(c0, sa)} strokeWidth={lw} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - reveal} className="art-diagram-curve" />);
+        els.push(<path key={n++} d={openDiagramPath(pts)} fill="none" stroke={C(c0, sa)} strokeWidth={lw} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - reveal} className="art-diagram-curve art-glow-line" />);
       } else {
         els.push(<polygon key={n++} points={pts.map(p => p.join(',')).join(' ')} fill={fa ? C(c0, fa) : 'none'} stroke={sa ? C(c0, sa) : 'none'} strokeWidth={lw} strokeLinejoin="round" />);
       }
@@ -631,7 +619,7 @@ const waveModel: Model = ({ kit, st, p, pulse }) => {
   const pts: Array<[number, number]> = [];
   const tMax = st === 'predict' ? 0.001 : theta;
   for (let i = 0; i <= 60; i++) { const t = tMax * i / 60; pts.push([XW(t), wy - r * Math.sin(t)]); }
-  if (pts.length > 1) kit.poly(pts, TE, 0, 0.95, 3);
+  if (pts.length > 1) kit.poly(pts, VI, 0, 0.95, 3);
   // connector from circle point to wave point
   if (st !== 'predict') {
     kit.ln(px, py, XW(theta), wy - r * Math.sin(theta), WH, 0.35 + 0.2 * pulse, 1.2);
