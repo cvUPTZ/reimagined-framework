@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { computeSlope, evaluateMathExpression, extractPlottableExpression, generatePlotData } from '@/lib/math-engine';
 import { clipDiagramLine, diagramReveal, openDiagramPath, type DiagramPoint } from '@/lib/diagram-geometry';
 import type { Scene } from '@/lib/studio';
@@ -9,6 +10,8 @@ const green = 'var(--primary)', gold = 'var(--gold)', ink = 'var(--foreground)';
 export function OpenMathDiagram({ visual, expression, elapsed, duration }: {
   visual: Scene['visual']; expression: string; elapsed: number; duration: number;
 }) {
+  const clipId = `open-math-${useId().replaceAll(':', '')}`;
+  const barCount = 4 + Math.floor(20 * Math.max(0, Math.min(1, elapsed / Math.max(0.5, duration))));
   const curveQ = diagramReveal(elapsed, duration);
   const pointQ = diagramReveal(elapsed, duration, 0.22);
   const tangentQ = diagramReveal(elapsed, duration, 0.36);
@@ -54,14 +57,14 @@ export function OpenMathDiagram({ visual, expression, elapsed, duration }: {
   }
 
   return <g fontFamily="Tajawal, Space Grotesk, sans-serif">
-    <defs><clipPath id="open-math-plot"><rect x={bounds.left} y={bounds.top} width={bounds.right - bounds.left} height={bounds.bottom - bounds.top}/></clipPath></defs>
+    <defs><clipPath id={clipId}><rect x={bounds.left} y={bounds.top} width={bounds.right - bounds.left} height={bounds.bottom - bounds.top}/></clipPath></defs>
     <path d={`M${bounds.left} ${axisY}H${bounds.right} M${bounds.right - 7} ${axisY - 4}L${bounds.right} ${axisY}L${bounds.right - 7} ${axisY + 4} M${axisX} ${bounds.bottom}V${bounds.top} M${axisX - 4} ${bounds.top + 7}L${axisX} ${bounds.top}L${axisX + 4} ${bounds.top + 7}`} fill="none" stroke="var(--axis)" strokeWidth={1.6}/>
     <text x={bounds.right - 4} y={axisY - 12} textAnchor="end" fill={ink} fontSize={17}>x</text>
     <text x={axisX + 14} y={bounds.top + 8} fill={ink} fontSize={17}>y</text>
     {[-2, -1, 1, 2, 4].filter(x => x > minX && x < maxX).map(x => <g key={x}><path d={`M${X(x)} ${axisY - 4}v8`} stroke="var(--axis)"/><text x={X(x)} y={axisY + 22} textAnchor="middle" fill="var(--muted-foreground)" fontSize={14}>{x}</text></g>)}
-    <g clipPath="url(#open-math-plot)">
-      {visual === 'integral' && Array.from({ length: 4 + Math.floor(20 * u) }, (_, i, all) => {
-        const dx = 3.2 / all.length, x = -1.6 + i * dx;
+    <g clipPath={`url(#${clipId})`}>
+      {visual === 'integral' && Array.from({ length: barCount }, (_, i) => {
+        const dx = 3.2 / barCount, x = -1.6 + i * dx;
         const value = evaluateMathExpression(expr, x + dx / 2);
         if (value.error) return null;
         return <rect key={i} x={X(x)} y={Math.min(Y(value.value), axisY)} width={X(x + dx) - X(x)} height={Math.abs(Y(value.value) - axisY)} fill="color-mix(in oklab, var(--primary) 18%, transparent)" stroke={gold} strokeWidth={1} opacity={tangentQ}/>;
