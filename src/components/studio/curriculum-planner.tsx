@@ -18,93 +18,30 @@ import {
   Trash2,
   Wrench,
   X,
+  PieChart,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScenePreview } from './scene-preview';
-import { legacyToProject, listLegacy, type LegacyEntry, type LegacySource } from '@/lib/legacy-library';
+import { legacyToProject, type LegacyEntry, type LegacySource } from '@/lib/legacy-library';
 import { totalDuration, type StudioProject } from '@/lib/studio';
-
-export type CurriculumLevel = '4AM' | '3AS';
-export type VideoPlanStatus = 'idea' | 'draft' | 'scheduled' | 'published';
-
-export interface ScheduledPlanItem {
-  id: string;
-  entryId: string;
-  level: CurriculumLevel;
-  date: string; // YYYY-MM-DD
-  status: VideoPlanStatus;
-  note?: string;
-}
-
-export interface CurriculumChapter {
-  id: string;
-  name: string;
-  level: CurriculumLevel;
-  order: number;
-}
-
-export const CURRICULUM_CHAPTERS: Record<CurriculumLevel, CurriculumChapter[]> = {
-  '4AM': [
-    { id: '4am-ch1', name: 'القسمة والقاسم المشترك الأكبر (PGCD)', level: '4AM', order: 1 },
-    { id: '4am-ch2', name: 'الحساب على الجذور التربيعية', level: '4AM', order: 2 },
-    { id: '4am-ch3', name: 'الحساب الحرفي والمتطابقات الشهيرة', level: '4AM', order: 3 },
-    { id: '4am-ch4', name: 'المعادلات والمتراجحات من الدرجة الأولى', level: '4AM', order: 4 },
-    { id: '4am-ch5', name: 'الهندسة المستوية (طالس وفيثاغورس والمثلثات)', level: '4AM', order: 5 },
-    { id: '4am-ch6', name: 'الدوال الخطية والدوال التآلفية', level: '4AM', order: 6 },
-    { id: '4am-ch7', name: 'جمل معادلتين والإحصاء والهندسة الفضائية', level: '4AM', order: 7 },
-  ],
-  '3AS': [
-    { id: '3as-ch1', name: 'الباب 1 · النهايات والاستمرارية', level: '3AS', order: 1 },
-    { id: '3as-ch2', name: 'الباب 2 · الاشتقاقية وتطبيقاتها', level: '3AS', order: 2 },
-    { id: '3as-ch3', name: 'الباب 3 · الدوال الأسية واللوغاريتمية', level: '3AS', order: 3 },
-    { id: '3as-ch4', name: 'الباب 4 · التزايد المقارن', level: '3AS', order: 4 },
-    { id: '3as-ch5', name: 'الباب 5 و6 · الدوال الأصلية والحساب التكاملي', level: '3AS', order: 5 },
-    { id: '3as-ch6', name: 'الباب 7 · الاحتمالات وقوانين التوزيع', level: '3AS', order: 6 },
-    { id: '3as-ch7', name: 'الباب 8 · المتتاليات العددية والبرهان بالتراجع', level: '3AS', order: 7 },
-    { id: '3as-ch8', name: 'الباب 9 و10 · القسمة والموافقات في Z', level: '3AS', order: 8 },
-    { id: '3as-ch9', name: 'الباب 12 · الأعداد المركبة والتحويلات النقطية', level: '3AS', order: 9 },
-    { id: '3as-ch10', name: 'الباب 13 · التشابه المباشر في المستوي', level: '3AS', order: 10 },
-    { id: '3as-ch11', name: 'الباب 14 و15 · الجداء السلمي والهندسة في الفضاء', level: '3AS', order: 11 },
-  ],
-};
-
-const chapterPatterns: Record<string, RegExp> = {
-  '4am-ch1': /قاسم|قسمة|PGCD|إقليدس/i,
-  '4am-ch2': /جذور|جذر/i,
-  '4am-ch3': /حرفي|متطابقات|نشر|تحليل|مربع مجموع|أعداد نسبية|كسر|تناسبية/i,
-  '4am-ch4': /معادلات|متراجحات|سالب/i,
-  '4am-ch5': /طالس|فيثاغورس|مثلثات|ظل|جيب|هندسة|محيطية|تكبير/i,
-  '4am-ch6': /دوال خطية|تآلفية|دوال/i,
-  '4am-ch7': /جمل|إحصاء|فضاء|مكعب|قوى/i,
-  '3as-ch1': /نهايات|استمرار/i,
-  '3as-ch2': /اشتقاق/i,
-  '3as-ch3': /أسية|لوغاريتم/i,
-  '3as-ch4': /تزايد/i,
-  '3as-ch5': /تكامل|أصلية/i,
-  '3as-ch6': /احتمال/i,
-  '3as-ch7': /متتالي/i,
-  '3as-ch8': /قسمة في Z|موافقات|أولية/i,
-  '3as-ch9': /مركبة/i,
-  '3as-ch10': /تشابه/i,
-  '3as-ch11': /فضاء|مستوي|كرة/i,
-};
-
-const stages = [
-  { source: 'intuition', label: 'بناء الحدس', icon: Lightbulb },
-  { source: 'mistake', label: 'تشخيص الأخطاء', icon: Wrench },
-  { source: 'ready', label: 'فيديوهات جاهزة', icon: Film },
-  { source: 'solve', label: 'حل التمارين', icon: BookOpen },
-] as const;
-
-const allEntries = stages.flatMap(stage => listLegacy(stage.source as LegacySource));
-
-const matchesChapter = (entry: LegacyEntry, chapter: CurriculumChapter) =>
-  entry.level === chapter.level && !!chapterPatterns[chapter.id]?.test(`${entry.chapter} ${entry.topic}`);
-
-const pad = (n: number) => String(n).padStart(2, '0');
-const toYMD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-const PLAN_STORAGE_KEY = 'qed_curriculum_plan_v1';
+import {
+  CURRICULUM_CHAPTERS,
+  STAGES,
+  getAllCurriculumEntries,
+  matchesChapter,
+  loadStoredPlan,
+  saveStoredPlan,
+  generateAutoSchedule,
+  exportPlanAsCSV,
+  formatDateYMD,
+  pad2,
+  type CurriculumLevel,
+  type VideoPlanStatus,
+  type ScheduledPlanItem,
+  type CurriculumChapter,
+} from '@/lib/curriculum-planner-store';
 
 export function CurriculumPlanner({
   onLoadProject,
@@ -113,7 +50,7 @@ export function CurriculumPlanner({
   onLoadProject: (project: StudioProject) => void;
   onNotify: (message: string) => void;
 }) {
-  const [plannerTab, setPlannerTab] = useState<'curriculum' | 'calendar'>('curriculum');
+  const [plannerTab, setPlannerTab] = useState<'curriculum' | 'calendar' | 'metrics'>('curriculum');
   const [level, setLevel] = useState<CurriculumLevel>('4AM');
   const [chapterId, setChapterId] = useState('4am-ch1');
   const [source, setSource] = useState<LegacySource>('intuition');
@@ -122,28 +59,21 @@ export function CurriculumPlanner({
 
   // Calendar State
   const [calMonth, setCalMonth] = useState<Date>(() => new Date());
-  const [selectedDate, setSelectedDate] = useState<string>(() => toYMD(new Date()));
-  const [schedule, setSchedule] = useState<Record<string, ScheduledPlanItem>>(() => {
-    try {
-      const raw = localStorage.getItem(PLAN_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [selectedDate, setSelectedDate] = useState<string>(() => formatDateYMD(new Date()));
+  const [schedule, setSchedule] = useState<Record<string, ScheduledPlanItem>>(() => loadStoredPlan());
 
   useEffect(() => {
-    try {
-      localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(schedule));
-    } catch {
-      // storage full or disabled
-    }
+    saveStoredPlan(schedule);
   }, [schedule]);
 
+  const allEntries = useMemo(() => getAllCurriculumEntries(), []);
   const chapters = CURRICULUM_CHAPTERS[level];
   const chapter = chapters.find(item => item.id === chapterId) ?? chapters[0];
 
-  const chapterEntries = useMemo(() => (chapter ? allEntries.filter(entry => matchesChapter(entry, chapter)) : []), [chapter]);
+  const chapterEntries = useMemo(
+    () => (chapter ? allEntries.filter(entry => matchesChapter(entry, chapter)) : []),
+    [allEntries, chapter],
+  );
 
   const visibleEntries = useMemo(
     () =>
@@ -158,7 +88,7 @@ export function CurriculumPlanner({
   const selected = visibleEntries.find(entry => entry.id === selectedId) ?? visibleEntries[0];
   const preview = useMemo(() => (selected ? legacyToProject(selected) : null), [selected]);
   const previewScene = preview?.scenes.find(scene => scene.phase === 'Intuition') ?? preview?.scenes[1] ?? preview?.scenes[0];
-  const activeStage = stages.find(stage => stage.source === source) ?? stages[0];
+  const activeStage = STAGES.find(stage => stage.source === source) ?? STAGES[0];
 
   function changeLevel(next: CurriculumLevel) {
     setLevel(next);
@@ -195,7 +125,7 @@ export function CurriculumPlanner({
   function toggleStatus(entryId: string) {
     const item = schedule[entryId];
     if (!item) {
-      scheduleEntry(entryId, toYMD(new Date()));
+      scheduleEntry(entryId, formatDateYMD(new Date()));
       return;
     }
     const order: VideoPlanStatus[] = ['idea', 'draft', 'scheduled', 'published'];
@@ -207,44 +137,34 @@ export function CurriculumPlanner({
     onNotify(`تغيّرت الحالة إلى: ${next}`);
   }
 
-  function autoPlanMonth() {
-    const available = allEntries.filter(e => e.level === level);
-    if (!available.length) return;
-    const d = new Date();
-    // Publish 3 days per week: Saturday (6), Monday (1), Wednesday (3)
-    const pubDays = [6, 1, 3];
-    const newItems: Record<string, ScheduledPlanItem> = { ...schedule };
-    let cur = new Date(d);
-    let count = 0;
-
-    for (let i = 0; i < available.length && count < 12; i++) {
-      const entry = available[i];
-      if (newItems[entry.id]) continue;
-
-      // advance until pubDay
-      while (!pubDays.includes(cur.getDay())) {
-        cur.setDate(cur.getDate() + 1);
-      }
-      const ymd = toYMD(cur);
-      newItems[entry.id] = {
-        id: crypto.randomUUID(),
-        entryId: entry.id,
-        level,
-        date: ymd,
-        status: 'scheduled',
-      };
-      cur.setDate(cur.getDate() + 1);
-      count++;
+  function triggerAutoPlan() {
+    const updated = generateAutoSchedule(allEntries, schedule, level);
+    const addedCount = Object.keys(updated).length - Object.keys(schedule).length;
+    setSchedule(updated);
+    if (addedCount > 0) {
+      onNotify(`تمت جدولة ${addedCount} فيديوهات تلقائياً لـ ${level}!`);
+    } else {
+      onNotify(`جميع فيديوهات ${level} مجدولة بالفعل.`);
     }
-    setSchedule(newItems);
-    onNotify(`تمت جدولة ${count} فيديوهات تلقائياً لـ ${level}!`);
   }
 
-  // Calendar rendering helpers
+  function exportCSV() {
+    const csvData = exportPlanAsCSV(schedule, allEntries);
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `qed-plan-${level}-${formatDateYMD(new Date())}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    onNotify('تم تصدير ملف الخطة (CSV) بنجاح');
+  }
+
+  // Calendar rendering data
   const year = calMonth.getFullYear();
   const month = calMonth.getMonth();
   const firstDay = new Date(year, month, 1);
-  const startDayIndex = (firstDay.getDay() + 1) % 7; // Saturday as 0 in Arab regions
+  const startDayIndex = (firstDay.getDay() + 1) % 7; // Saturday as 0
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const scheduledByDate = useMemo(() => {
@@ -257,14 +177,40 @@ export function CurriculumPlanner({
       }
     });
     return map;
-  }, [schedule]);
+  }, [schedule, allEntries]);
 
   const monthNames = ['جانفي', 'فيفري', 'مارس', 'أفريل', 'ماي', 'جوان', 'جويلية', 'أوت', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
   const dayNames = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
+  // Metrics Data Calculations
+  const levelAllEntries = useMemo(() => allEntries.filter(e => e.level === level), [allEntries, level]);
+  const metrics = useMemo(() => {
+    const published = Object.values(schedule).filter(i => i.level === level && i.status === 'published').length;
+    const scheduled = Object.values(schedule).filter(i => i.level === level && i.status === 'scheduled').length;
+    const drafts = Object.values(schedule).filter(i => i.level === level && i.status === 'draft').length;
+    const total = levelAllEntries.length;
+    const unscheduled = Math.max(0, total - (published + scheduled + drafts));
+
+    // Per chapter completion
+    const chapterStats = chapters.map(ch => {
+      const vids = allEntries.filter(e => matchesChapter(e, ch));
+      const done = vids.filter(v => schedule[v.id]?.status === 'published').length;
+      const planned = vids.filter(v => schedule[v.id]?.status === 'scheduled').length;
+      return {
+        chapter: ch,
+        total: vids.length,
+        done,
+        planned,
+        isComplete: done >= 3 || (vids.length > 0 && done === vids.length),
+      };
+    });
+
+    return { published, scheduled, drafts, unscheduled, total, chapterStats };
+  }, [schedule, level, levelAllEntries, chapters, allEntries]);
+
   return (
     <div className="curriculum-planner" dir="rtl">
-      {/* Primary Top Bar & Mode Switcher */}
+      {/* Top Bar Navigation */}
       <header className="planner-topbar">
         <div className="planner-levels" role="group" aria-label="المستوى التعليمي">
           <Button variant={level === '4AM' ? 'secondary' : 'ghost'} aria-pressed={level === '4AM'} onClick={() => changeLevel('4AM')}>
@@ -277,7 +223,7 @@ export function CurriculumPlanner({
           </Button>
         </div>
 
-        {/* View Mode Switcher */}
+        {/* View Switcher: Curriculum vs Calendar vs Metrics */}
         <div style={{ display: 'flex', gap: 6, background: 'var(--secondary)', padding: 3, borderRadius: 6 }}>
           <Button
             size="sm"
@@ -295,40 +241,52 @@ export function CurriculumPlanner({
           >
             <CalendarIcon size={13} style={{ marginLeft: 5 }} /> التقويم وجدول النشر
           </Button>
+          <Button
+            size="sm"
+            variant={plannerTab === 'metrics' ? 'default' : 'ghost'}
+            style={{ height: 28, fontSize: 11 }}
+            onClick={() => setPlannerTab('metrics')}
+          >
+            <PieChart size={13} style={{ marginLeft: 5 }} /> إحصائيات التغطية
+          </Button>
         </div>
 
         <span className="planner-total">
           <Film size={14} />
-          {allEntries.filter(entry => entry.level === level).length} فيديو في المكتبة
+          {levelAllEntries.length} فيديو في المنهاج
         </span>
       </header>
 
-      {/* Mode 1: Curriculum Explorer */}
+      {/* VIEW 1: Curriculum & Stages */}
       {plannerTab === 'curriculum' && (
         <div className="planner-workspace">
           <aside className="planner-chapters">
             <div className="planner-section-label">
               <BookOpen size={14} />
-              الأبواب <span>{chapters.length}</span>
+              الأبواب الدراسية <span>{chapters.length}</span>
             </div>
             <nav aria-label="الأبواب الدراسية">
-              {chapters.map(item => (
-                <Button
-                  key={item.id}
-                  variant="ghost"
-                  className={`planner-chapter ${chapter?.id === item.id ? 'is-selected' : ''}`}
-                  aria-current={chapter?.id === item.id ? 'true' : undefined}
-                  onClick={() => {
-                    setChapterId(item.id);
-                    setQuery('');
-                    setSelectedId(null);
-                  }}
-                >
-                  <span className="planner-chapter-number">{String(item.order).padStart(2, '0')}</span>
-                  <span className="planner-chapter-name">{item.name.replace(/^الباب [\d و]+ · /, '')}</span>
-                  <ChevronLeft size={13} />
-                </Button>
-              ))}
+              {chapters.map(item => {
+                const count = allEntries.filter(entry => matchesChapter(entry, item)).length;
+                return (
+                  <Button
+                    key={item.id}
+                    variant="ghost"
+                    className={`planner-chapter ${chapter?.id === item.id ? 'is-selected' : ''}`}
+                    aria-current={chapter?.id === item.id ? 'true' : undefined}
+                    onClick={() => {
+                      setChapterId(item.id);
+                      setQuery('');
+                      setSelectedId(null);
+                    }}
+                  >
+                    <span className="planner-chapter-number">{String(item.order).padStart(2, '0')}</span>
+                    <span className="planner-chapter-name">{item.name.replace(/^الباب [\d و]+ · /, '')}</span>
+                    <small style={{ fontSize: 9, opacity: 0.7 }}>{count}</small>
+                    <ChevronLeft size={13} />
+                  </Button>
+                );
+              })}
             </nav>
           </aside>
 
@@ -340,31 +298,34 @@ export function CurriculumPlanner({
             </div>
 
             <div className="planner-stages" role="tablist" aria-label="نوع الفيديو">
-              {stages.map((stage, index) => (
-                <Button
-                  key={stage.source}
-                  variant="ghost"
-                  role="tab"
-                  aria-selected={source === stage.source}
-                  className={`planner-stage ${source === stage.source ? 'is-selected' : ''}`}
-                  onClick={() => {
-                    setSource(stage.source as LegacySource);
-                    setSelectedId(null);
-                  }}
-                >
-                  <span className="planner-stage-step">{index + 1}</span>
-                  <stage.icon size={14} />
-                  <span>{stage.label}</span>
-                  <small>{chapterEntries.filter(entry => entry.source === stage.source).length}</small>
-                </Button>
-              ))}
+              {STAGES.map((stage, index) => {
+                const count = chapterEntries.filter(entry => entry.source === stage.source).length;
+                return (
+                  <Button
+                    key={stage.source}
+                    variant="ghost"
+                    role="tab"
+                    aria-selected={source === stage.source}
+                    className={`planner-stage ${source === stage.source ? 'is-selected' : ''}`}
+                    onClick={() => {
+                      setSource(stage.source);
+                      setSelectedId(null);
+                    }}
+                  >
+                    <span className="planner-stage-step">{index + 1}</span>
+                    <span style={{ fontSize: 13 }}>{stage.source === 'intuition' ? '💡' : stage.source === 'mistake' ? '🩹' : stage.source === 'ready' ? '🎬' : '📝'}</span>
+                    <span>{stage.label}</span>
+                    <small>{count}</small>
+                  </Button>
+                );
+              })}
             </div>
 
             <div className="planner-search">
               <Search size={15} />
               <input
                 aria-label="ابحث في فيديوهات الباب"
-                placeholder="ابحث عن موضوع أو سؤال…"
+                placeholder="ابحث عن موضوع أو فكرة…"
                 value={query}
                 onChange={event => {
                   setQuery(event.target.value);
@@ -419,7 +380,6 @@ export function CurriculumPlanner({
 
               {!visibleEntries.length && (
                 <div className="planner-empty">
-                  <activeStage.icon size={26} />
                   <strong>{query ? 'لا توجد نتائج مطابقة' : 'لا توجد فيديوهات لهذا النوع بعد'}</strong>
                   {query ? (
                     <Button variant="outline" size="sm" onClick={() => setQuery('')}>
@@ -430,12 +390,12 @@ export function CurriculumPlanner({
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const available = stages.find(stage => chapterEntries.some(entry => entry.source === stage.source));
-                        if (available) setSource(available.source as LegacySource);
+                        const available = STAGES.find(stage => chapterEntries.some(entry => entry.source === stage.source));
+                        if (available) setSource(available.source);
                       }}
                       disabled={!chapterEntries.length}
                     >
-                      عرض الفيديوهات المتاحة
+                      عرض الفيديوهات المتوفرة في الباب
                     </Button>
                   )}
                 </div>
@@ -508,32 +468,21 @@ export function CurriculumPlanner({
         </div>
       )}
 
-      {/* Mode 2: Interactive Publishing Calendar */}
+      {/* VIEW 2: Interactive Publishing Calendar */}
       {plannerTab === 'calendar' && (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '16px 24px', overflowY: 'auto' }}>
           {/* Calendar Cadence Bar */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, background: 'var(--secondary)', padding: '10px 16px', borderRadius: 6 }}>
             <div>
               <strong style={{ fontSize: 13, display: 'block' }}>خطة النشر والوتيرة الأسبوعية</strong>
-              <small style={{ color: 'var(--muted-foreground)', fontSize: 11 }}>3 فيديوهات أسبوعياً (السبت · الإثنين · الأربعاء) تضمن تغطية كاملة قبل الامتحانات</small>
+              <small style={{ color: 'var(--muted-foreground)', fontSize: 11 }}>3 فيديوهات أسبوعياً (السبت · الإثنين · الأربعاء) تضمن تغطية شاملة للمنهاج</small>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Button size="sm" variant="default" style={{ fontSize: 11 }} onClick={autoPlanMonth}>
+              <Button size="sm" variant="default" style={{ fontSize: 11 }} onClick={triggerAutoPlan}>
                 <Sparkles size={13} style={{ marginLeft: 5 }} /> جدولة تلقائية للشهر
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                style={{ fontSize: 11 }}
-                onClick={() => {
-                  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(schedule, null, 2));
-                  const a = document.createElement('a');
-                  a.href = dataStr;
-                  a.download = `qed-publishing-plan-${toYMD(new Date())}.json`;
-                  a.click();
-                }}
-              >
-                <Download size={13} style={{ marginLeft: 5 }} /> تصدير الخطة
+              <Button size="sm" variant="outline" style={{ fontSize: 11 }} onClick={exportCSV}>
+                <Download size={13} style={{ marginLeft: 5 }} /> تصدير الخطة (CSV)
               </Button>
             </div>
           </div>
@@ -557,24 +506,22 @@ export function CurriculumPlanner({
           </div>
 
           {/* Calendar Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, flex: 1, minHeight: 480 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, flex: 1, minHeight: 460 }}>
             {dayNames.map(d => (
               <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, padding: 6, color: 'var(--muted-foreground)' }}>
                 {d}
               </div>
             ))}
 
-            {/* Empty offset days */}
             {Array.from({ length: startDayIndex }).map((_, i) => (
               <div key={`offset-${i}`} style={{ background: 'color-mix(in oklab, var(--card) 40%, transparent)', borderRadius: 4, minHeight: 74, opacity: 0.3 }} />
             ))}
 
-            {/* Month days */}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const dayNum = i + 1;
-              const dateStr = `${year}-${pad(month + 1)}-${pad(dayNum)}`;
+              const dateStr = `${year}-${pad2(month + 1)}-${pad2(dayNum)}`;
               const vids = scheduledByDate[dateStr] ?? [];
-              const isToday = dateStr === toYMD(new Date());
+              const isToday = dateStr === formatDateYMD(new Date());
               const isSelected = dateStr === selectedDate;
 
               return (
@@ -637,14 +584,14 @@ export function CurriculumPlanner({
             })}
           </div>
 
-          {/* Selected Date Summary & Action Banner */}
+          {/* Selected Date Drawer Banner */}
           <div style={{ marginTop: 14, padding: 12, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <strong style={{ fontSize: 12 }}>
                 الفيديوهات المجدولة ليوم {selectedDate} ({scheduledByDate[selectedDate]?.length ?? 0} فيديو)
               </strong>
               <small style={{ display: 'block', color: 'var(--muted-foreground)', fontSize: 11 }}>
-                انقر على أي يوم لتعيينه كموعد النشر المباشر.
+                انقر على أي فيديو لفتحه مباشرة في المحرر.
               </small>
             </div>
             {scheduledByDate[selectedDate]?.length ? (
@@ -665,6 +612,66 @@ export function CurriculumPlanner({
                 <Trash2 size={12} style={{ marginLeft: 4 }} /> إفراغ اليوم
               </Button>
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 3: Coverage Metrics & Chapter Health */}
+      {plannerTab === 'metrics' && (
+        <div style={{ flex: 1, minHeight: 0, padding: '20px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Top Funnel KPIs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+              <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>إجمالي الفيديوهات المتاحة</span>
+              <h3 style={{ fontSize: 24, margin: '4px 0 0', fontWeight: 800 }}>{metrics.total}</h3>
+            </div>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+              <span style={{ fontSize: 11, color: 'var(--primary)' }}>تم نشرها ✅</span>
+              <h3 style={{ fontSize: 24, margin: '4px 0 0', fontWeight: 800, color: 'var(--primary)' }}>{metrics.published}</h3>
+            </div>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+              <span style={{ fontSize: 11, color: 'var(--gold)' }}>مجدولة للنشر 🗓️</span>
+              <h3 style={{ fontSize: 24, margin: '4px 0 0', fontWeight: 800, color: 'var(--gold)' }}>{metrics.scheduled}</h3>
+            </div>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+              <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>ما زالت بلا جدولة ⏳</span>
+              <h3 style={{ fontSize: 24, margin: '4px 0 0', fontWeight: 800 }}>{metrics.unscheduled}</h3>
+            </div>
+          </div>
+
+          {/* Chapter Health Breakdown Table */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: 16 }}>
+            <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>تغطية الأبواب الدراسية لـ {level}</strong>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {metrics.chapterStats.map(stat => (
+                <div key={stat.chapter.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--background)', borderRadius: 4, border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {stat.isComplete ? (
+                      <CheckCircle2 size={16} style={{ color: 'var(--primary)' }} />
+                    ) : (
+                      <AlertTriangle size={16} style={{ color: 'var(--gold)' }} />
+                    )}
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{stat.chapter.name}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 11 }}>
+                    <span>{stat.done} منشور</span>
+                    <span>{stat.planned} مجدول</span>
+                    <span style={{ color: 'var(--muted-foreground)' }}>{stat.total} فيديو متوفر</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      style={{ height: 24, fontSize: 10 }}
+                      onClick={() => {
+                        setChapterId(stat.chapter.id);
+                        setPlannerTab('curriculum');
+                      }}
+                    >
+                      استعراض الباب ←
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
