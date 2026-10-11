@@ -324,7 +324,7 @@ const fraction: Model = ({ kit, a, b, c, params, st, p, pulse }) => {
 function plotFrame(kit: Kit, f: (x: number) => number, xLo: number, xHi: number, curveColor: string, curveQ: number) {
   const sqz = Math.min(BW * 0.9, MH * 0.92), px0 = CX - sqz / 2, py0 = MY - sqz / 2;
   const ys: number[] = [];
-  for (let i = 0; i <= 60; i++) ys.push(f(xLo + (xHi - xLo) * i / 60));
+  for (let i = 0; i <= 60; i++) { const y = f(xLo + (xHi - xLo) * i / 60); if (Number.isFinite(y) && Math.abs(y) < 1e4) ys.push(y); }
   const yLo = Math.min(...ys, 0), yHi = Math.max(...ys, 0), pad = (yHi - yLo) * 0.12 + 0.4;
   const X = (x: number) => px0 + (x - xLo) / (xHi - xLo) * sqz;
   const Y = (y: number) => py0 + sqz - (y - (yLo - pad)) / (yHi - yLo + 2 * pad) * sqz;
