@@ -81,7 +81,7 @@ export function CurriculumPlanner({ onLoadProject, onNotify }: {
     (!query.trim() || `${entry.topic} ${entry.hook} ${entry.summary}`.toLowerCase().includes(query.trim().toLowerCase()))), [chapterEntries, source, query]);
   const selected = visibleEntries.find(entry => entry.id === selectedId) ?? visibleEntries[0];
   const preview = useMemo(() => selected ? legacyToProject(selected) : null, [selected]);
-  const previewScene = preview?.scenes.find(scene => scene.kind === 'visual') ?? preview?.scenes[1] ?? preview?.scenes[0];
+  const previewScene = preview?.scenes.find(scene => scene.phase === 'Intuition') ?? preview?.scenes[1] ?? preview?.scenes[0];
   const activeStage = stages.find(stage => stage.source === source) ?? stages[0];
 
   function changeLevel(next: CurriculumLevel) {
@@ -130,7 +130,7 @@ export function CurriculumPlanner({ onLoadProject, onNotify }: {
           <div className="planner-artwork"><ScenePreview project={preview} scene={previewScene} elapsed={previewScene.duration} miniature/></div>
           <span className={`planner-type planner-type-${source}`}>{activeStage.label}</span>
           <h4>{selected.topic}</h4>
-          <div className="planner-preview-meta"><span><Film size={13}/>{preview.scenes.length} مشاهد</span><span><Clock size={13}/>{Math.round(totalDuration(preview))} ثانية</span></div>
+          <div className="planner-preview-meta"><span><Film size={13}/>{preview.scenes.length} مشاهد</span><span><Clock size={13}/>{Math.round(totalDuration(preview.scenes))} ثانية</span></div>
           <p className="planner-summary">{selected.summary}</p>
           <Button className="planner-open" onClick={openProject}>فتح في المحرر<ArrowLeft size={16}/></Button>
         </> : <div className="planner-detail-empty"><Film size={28}/><span>لا يوجد فيديو للمعاينة</span></div>}
