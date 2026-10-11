@@ -359,7 +359,7 @@ export function ScenePreview({
               </tspan>
             )}
           </text>
-          <text x={width - 94} y="44" textAnchor="end" className="art-tagline" dir="auto">
+          <text x={width - 94} y="44" textAnchor="end" className="art-tagline" style={{ unicodeBidi: "plaintext" }}>
             {tagline}
           </text>
         </>
@@ -374,7 +374,7 @@ export function ScenePreview({
       >
         {/* Phase Header */}
         {(scene.showPhase ?? true) && (
-          <text x={textX} y={baseTitleY - 48} textAnchor={textAnchor} className="art-phase" dir="auto">
+          <text x={textX} y={baseTitleY - 48} textAnchor={textAnchor} className="art-phase" style={{ unicodeBidi: "plaintext" }}>
             {phaseOf(scene).toUpperCase()}
           </text>
         )}
@@ -393,7 +393,7 @@ export function ScenePreview({
             direction={isArabic ? 'rtl' : 'ltr'}
           >
             {lines.slice(0, 5).map((line, i) => (
-              <tspan key={i} x={textX} dy={i ? fontSize * lineHeight : 0} textAnchor={textAnchor} dir="auto">
+              <tspan key={i} x={textX} dy={i ? fontSize * lineHeight : 0} textAnchor={textAnchor} style={{ unicodeBidi: "plaintext" }}>
                 {line}
               </tspan>
             ))}
@@ -431,7 +431,7 @@ export function ScenePreview({
                 <text x="71" y="94" textAnchor="middle" fill="#34d399" fontSize="11" fontWeight="bold">
                   (3 + 2) = 5
                 </text>
-                <text x="71" y="80" textAnchor="middle" fill="var(--muted-foreground)" fontSize="8" dir="auto">
+                <text x="71" y="80" textAnchor="middle" fill="var(--muted-foreground)" fontSize="8" style={{ unicodeBidi: "plaintext" }}>
                   الأولوية 1: القوس أولاً
                 </text>
 
@@ -462,7 +462,7 @@ export function ScenePreview({
                 {project.mistake && (
                   <g transform="translate(195, 25)">
                     <rect x="-175" y="-14" width="350" height="28" rx="5" fill="color-mix(in oklab, var(--coral) 16%, var(--surface))" stroke="var(--coral)" strokeWidth="1.2" filter={`url(#softBloom-${id})`} />
-                    <text x="0" y="4" textAnchor="middle" fill="var(--coral)" fontSize="10.5" fontWeight="600" dir="auto">
+                    <text x="0" y="4" textAnchor="middle" fill="var(--coral)" fontSize="10.5" fontWeight="600" style={{ unicodeBidi: "plaintext" }}>
                       ⚠ فخ شائع: {project.mistake}
                     </text>
                   </g>
@@ -537,7 +537,7 @@ export function ScenePreview({
                     {/* Arabic Riemann Convergence Card */}
                     <g transform="translate(195, 232)">
                       <rect x="-140" y="-12" width="280" height="22" rx="4" fill="var(--surface)" stroke="var(--primary)" strokeWidth="1.2" />
-                      <text x="0" y="3" textAnchor="middle" fontSize="9.5" fill="var(--primary)" fontWeight="bold" dir="auto">
+                      <text x="0" y="3" textAnchor="middle" fontSize="9.5" fill="var(--primary)" fontWeight="bold" style={{ unicodeBidi: "plaintext" }}>
                         مجموع ريمان: N = {numBars} مستطيل ⟶ ∫[a,b] f(x)dx
                       </text>
                     </g>
@@ -562,10 +562,10 @@ export function ScenePreview({
                     <circle cx="195" cy={waveContactY} r="4.5" fill="#38bdf8" filter={`url(#neonGlow-${id})`} />
 
                     {/* Arabic Phasor Callout */}
-                    <text x={phasorCenter} y="146" textAnchor="middle" fontSize="8" fill="#818cf8" fontWeight="bold" dir="auto">
+                    <text x={phasorCenter} y="146" textAnchor="middle" fontSize="8" fill="#818cf8" fontWeight="bold" style={{ unicodeBidi: "plaintext" }}>
                       الدائرة المثلثية (e^{'{iθ}'})
                     </text>
-                    <text x={phasorCenter} y="224" textAnchor="middle" fontSize="7.5" fill="#38bdf8" dir="auto">
+                    <text x={phasorCenter} y="224" textAnchor="middle" fontSize="7.5" fill="#38bdf8" style={{ unicodeBidi: "plaintext" }}>
                       sin(θ) = {(-Math.sin(wavePhase)).toFixed(2)}
                     </text>
                   </g>
@@ -615,14 +615,14 @@ export function ScenePreview({
                     {/* Tangent point with pulsing beacon */}
                     <circle cx={ptX} cy={ptY} r="10" className="art-point-halo" fill="color-mix(in oklab, var(--gold) 25%, transparent)" />
                     <circle cx={ptX} cy={ptY} r="4.5" fill="#ffffff" filter={`url(#softBloom-${id})`} />
-                    <text x={ptX} y={ptY - 12} textAnchor="middle" fontSize="8" fill="#ffffff" fontWeight="bold" dir="auto">
+                    <text x={ptX} y={ptY - 12} textAnchor="middle" fontSize="8" fill="#ffffff" fontWeight="bold" style={{ unicodeBidi: "plaintext" }}>
                       M(x₀, f(x₀))
                     </text>
 
                     {/* Live Arabic Calculus HUD Card */}
                     <g transform={`translate(${Math.max(90, Math.min(300, ptX))}, ${Math.max(30, ptY - 26)})`}>
                       <rect x="-85" y="-14" width="170" height="24" rx="4" fill="var(--surface)" stroke="#fbbf24" strokeWidth="1.2" className="art-callout-pill" />
-                      <text x="0" y="2" textAnchor="middle" className="art-hud-text" fontSize="9" fill="var(--foreground)" dir="auto">
+                      <text x="0" y="2" textAnchor="middle" className="art-hud-text" fontSize="9" fill="var(--foreground)" style={{ unicodeBidi: "plaintext" }}>
                         المشتقة: f'({x0.toFixed(2)}) = {slope.toFixed(2)} {slope > 0.05 ? '↗ تزايد' : slope < -0.05 ? '↘ تناقص' : '↔ ذروة'}
                       </text>
                     </g>
@@ -648,7 +648,7 @@ export function ScenePreview({
                         <circle cx="0" cy="0" r="5" fill={ext.type === 'max' ? '#fbbf24' : '#34d399'} filter={`url(#neonGlow-${id})`} />
                         <g transform="translate(0, -14)">
                           <rect x="-42" y="-9" width="84" height="16" rx="3" fill="var(--surface)" stroke={ext.type === 'max' ? '#fbbf24' : '#34d399'} strokeWidth="1" />
-                          <text x="0" y="3" textAnchor="middle" fontSize="7.5" fill={ext.type === 'max' ? '#fbbf24' : '#34d399'} fontWeight="bold" dir="auto">
+                          <text x="0" y="3" textAnchor="middle" fontSize="7.5" fill={ext.type === 'max' ? '#fbbf24' : '#34d399'} fontWeight="bold" style={{ unicodeBidi: "plaintext" }}>
                             {ext.type === 'max' ? 'ذروة عظمى f\'=0' : 'قيمة صغرى f\'=0'}
                           </text>
                         </g>
@@ -661,7 +661,7 @@ export function ScenePreview({
                 {visual === 'exponential' && (
                   <g>
                     <line x1="0" y1="240" x2="195" y2="240" stroke="#f87171" strokeWidth="1.5" strokeDasharray="4 3" opacity="0.8" />
-                    <text x="25" y="234" fontSize="8" fill="#f87171" dir="auto">
+                    <text x="25" y="234" fontSize="8" fill="#f87171" style={{ unicodeBidi: "plaintext" }}>
                       المستقيم المقارب y = 0
                     </text>
                     <circle cx="195" cy="185" r="4.5" fill="#fbbf24" filter={`url(#neonGlow-${id})`} />
@@ -776,7 +776,7 @@ export function ScenePreview({
               fontWeight="bold"
               fill="#f8fafc"
               fontFamily="Tajawal, sans-serif"
-              dir="auto"
+              style={{ unicodeBidi: "plaintext" }}
             >
               امسح الكود واشترك في بوت التمارين والحلول
             </text>
@@ -848,7 +848,7 @@ export function ScenePreview({
       {/* Footnote Bar */}
       {(scene.showFootnote ?? true) && (
         <>
-          <text x="34" y={height - 30} className="art-footnote" dir="auto">
+          <text x="34" y={height - 30} className="art-footnote" style={{ unicodeBidi: "plaintext" }}>
             {footnote}
           </text>
           <text x={width - 34} y={height - 30} textAnchor="end" className="art-footnote">

@@ -138,7 +138,7 @@ export const defaultProject: StudioProject = {
   expression: "(3 + 2) × 4",
   remediation: "الأقواس أولاً، ثم نكمل العملية بالترتيب.",
   cta: "جرّب التشخيص المجاني مع QED",
-  brandKit: defaultBrandKits.threeblueonebrown,
+  brandKit: defaultBrandKits['threeblueonebrown']!,
   scenes: [
     { id: "s1", title: "الخطاف البصري", label: "01", body: "خطأ صغير في الترتيب\nيضيّع نقطة كاملة في البكالوريا!", duration: 3, kind: "hook", phase: "Hook", animation: "Draw in", visual: "curve", fontFamily: "Tajawal", fontSize: 40 },
     { id: "s2", title: "الفخ الشائع", label: "02", body: "(3 + 2) × 4\nالنتيجة ليست 11!", duration: 4, kind: "explain", phase: "Diagnosis", animation: "Fade", visual: "number-line", fontFamily: "Tajawal", fontSize: 40 },
