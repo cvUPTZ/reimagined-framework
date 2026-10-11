@@ -332,8 +332,8 @@ function plotFrame(kit: Kit, f: (x: number) => number, xLo: number, xHi: number,
   if (yLo < 0 && yHi > 0) kit.ln(px0, Y(0), px0 + sqz, Y(0), WH, 0.35, 1);
   if (xLo < 0 && xHi > 0) kit.ln(X(0), py0, X(0), py0 + sqz, WH, 0.35, 1);
   const pts: Array<[number, number]> = [];
-  for (let i = 0; i <= 60; i++) { const x = xLo + (xHi - xLo) * i / 60; pts.push([X(x), Y(f(x))]); }
-  kit.poly(pts, curveColor, 0, curveQ, 3);
+  for (let i = 0; i <= 60; i++) { const x = xLo + (xHi - xLo) * i / 60, y = f(x); if (Number.isFinite(y) && Math.abs(y) < 1e4) pts.push([X(x), Y(y)]); }
+  if (pts.length > 1) kit.poly(pts, curveColor, 0, curveQ, 3);
   return { X, Y, px0, py0, sqz };
 }
 
