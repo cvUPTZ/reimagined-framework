@@ -102,7 +102,7 @@ function makeKit(al: number, reveal = 1): Kit {
         <text
           key={n++}
           x={Math.max(42, Math.min(348, x))}
-          y={Math.max(50, Math.min(320, y))}
+          y={Math.max(64, Math.min(312, y))}
           fontSize={Math.max(14, size)}
           fontWeight={600}
           fontFamily="Tajawal, Cairo, sans-serif"
@@ -364,7 +364,6 @@ const tangent: Model = ({ kit, a, st, p, u }) => {
     kit.ln(X(right), Y(f(x0)), X(right), Y(f(x0) + rise), AM, annotationQ, 2.5);
     kit.tx('Δx', (X(x0) + X(right)) / 2, Y(f(x0)) + 24, 14, TE, annotationQ);
     kit.tx('Δy', X(right) + 20, (Y(f(x0)) + Y(f(x0) + rise)) / 2, 14, AM, annotationQ);
-    kit.tx(`f′(${f1(x0)}) = ${f1(df(x0))}`, CX, TOP + 28, 18, AM, annotationQ);
   }
   return {
     readout: st === 'predict' ? `الميل عند x=${f1(x0)} ؟` : st === 'move' ? `h = ${f1(h)}  ⇒  ميل ≈ ${f1(slope)}` : `f′(${f1(x0)}) = ${f1(df(x0))}`,
