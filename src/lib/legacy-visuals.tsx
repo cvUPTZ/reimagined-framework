@@ -324,7 +324,7 @@ const fraction: Model = ({ kit, a, b, c, params, st, p, pulse }) => {
 function plotFrame(kit: Kit, f: (x: number) => number, xLo: number, xHi: number, curveColor: string, curveQ: number) {
   const sqz = Math.min(BW * 0.9, MH * 0.92), px0 = CX - sqz / 2, py0 = MY - sqz / 2;
   const ys: number[] = [];
-  for (let i = 0; i <= 60; i++) ys.push(f(xLo + (xHi - xLo) * i / 60));
+  for (let i = 0; i <= 60; i++) { const y = f(xLo + (xHi - xLo) * i / 60); if (Number.isFinite(y) && Math.abs(y) < 1e4) ys.push(y); }
   const yLo = Math.min(...ys, 0), yHi = Math.max(...ys, 0), pad = (yHi - yLo) * 0.12 + 0.4;
   const X = (x: number) => px0 + (x - xLo) / (xHi - xLo) * sqz;
   const Y = (y: number) => py0 + sqz - (y - (yLo - pad)) / (yHi - yLo + 2 * pad) * sqz;
@@ -332,8 +332,8 @@ function plotFrame(kit: Kit, f: (x: number) => number, xLo: number, xHi: number,
   if (yLo < 0 && yHi > 0) kit.ln(px0, Y(0), px0 + sqz, Y(0), WH, 0.35, 1);
   if (xLo < 0 && xHi > 0) kit.ln(X(0), py0, X(0), py0 + sqz, WH, 0.35, 1);
   const pts: Array<[number, number]> = [];
-  for (let i = 0; i <= 60; i++) { const x = xLo + (xHi - xLo) * i / 60; pts.push([X(x), Y(f(x))]); }
-  kit.poly(pts, curveColor, 0, curveQ, 3);
+  for (let i = 0; i <= 60; i++) { const x = xLo + (xHi - xLo) * i / 60, y = f(x); if (Number.isFinite(y) && Math.abs(y) < 1e4) pts.push([X(x), Y(y)]); }
+  if (pts.length > 1) kit.poly(pts, curveColor, 0, curveQ, 3);
   return { X, Y, px0, py0, sqz };
 }
 
@@ -493,12 +493,190 @@ const thales: Model = ({ kit, st, p, pulse }) => {
   };
 };
 
+/** Function curve: parabola with vertex, variation arrows, and a limit point. */
+const curveModel: Model = ({ kit, a, b, c, st, p, pulse }) => {
+  const f = (x: number) => a * x * x / 4 + b * x / 2 + c;
+  const vx = a ? -b / a : 0, span = 3.5;
+  const { X, Y } = plotFrame(kit, f, vx - span, vx + span, VI, 0.95);
+  const vy = f(vx);
+  if (st !== 'predict') {
+    kit.dot(X(vx), Y(vy), 8, AM, 1);
+    kit.tx(`(${f1(vx)} ، ${f1(vy)})`, X(vx), Y(vy) - 20, 12, AM, 1);
+  }
+  // variation arrows along the curve
+  const dir = a >= 0 ? 1 : -1;
+  const ar = (x1: number, x2: number, up: boolean, q: number) => {
+    const y1 = f(x1), y2 = f(x2);
+    kit.ln(X(x1), Y(y1), X(x2), Y(y2), TE, q, 2);
+    const ang = Math.atan2(Y(y2) - Y(y1), X(x2) - X(x1));
+    kit.poly([[X(x2), Y(y2)], [X(x2) - 9 * Math.cos(ang - 0.4), Y(y2) - 9 * Math.sin(ang - 0.4)], [X(x2) - 9 * Math.cos(ang + 0.4), Y(y2) - 9 * Math.sin(ang + 0.4)]], TE, q, 0);
+    void up;
+  };
+  const g = st === 'move' ? p : st === 'predict' ? 0 : 1;
+  if (g > 0) { ar(vx - 2.6 * dir * 0 - 2.6, vx, false, 0.9 * g); ar(vx, vx + 2.6, true, 0.9 * g); }
+  const mx = vx + (st === 'move' ? -2.6 + 5.2 * p : 2);
+  kit.dot(X(mx), Y(f(mx)), 7, WH, 0.9);
+  if (st === 'observe') kit.tx(a >= 0 ? 'تناقص ثم تزايد' : 'تزايد ثم تناقص', CX, TOP + 26, 14, TE, 0.6 + 0.4 * pulse);
+  return {
+    readout: st === 'predict' ? 'ما شكل المنحنى ؟' : st === 'move' ? `x = ${f1(mx)}  ⇒  f(x) = ${f1(f(mx))}` : `القمة عند x = ${f1(vx)}`,
+    formula: `f(x) = ${a ? `${a}x²` : ''}${b ? ` + ${b}x` : ''}${c ? ` + ${c}` : ''}`.replace(/\+ -/g, '− '),
+  };
+};
+
+/** Inverse variation: hyperbola y = a/x with dashed asymptotes. */
+const inverseModel: Model = ({ kit, a, st, p, pulse }) => {
+  const k = a || 1, f = (x: number) => k / x;
+  const { X, Y, px0, py0, sqz } = plotFrame(kit, f, -4, 4, VI, 0);
+  // two branches, split around the asymptote
+  for (const [lo, hi] of [[-4, -0.15], [0.15, 4]] as const) {
+    const pts: Array<[number, number]> = [];
+    for (let i = 0; i <= 40; i++) { const x = lo + (hi - lo) * i / 40; pts.push([X(x), Y(f(x))]); }
+    kit.poly(pts, VI, 0, 0.95, 3);
+  }
+  // dashed asymptotes
+  for (let i = 0; i < 12; i++) {
+    kit.ln(X(0), py0 + i * sqz / 12, X(0), py0 + (i + 0.55) * sqz / 12, RD, 0.55, 1.5);
+    kit.ln(px0 + i * sqz / 12, Y(0), px0 + (i + 0.55) * sqz / 12, Y(0), RD, 0.55, 1.5);
+  }
+  const mx = st === 'move' ? 0.4 + 3 * p : 2;
+  if (st !== 'predict') { kit.dot(X(mx), Y(f(mx)), 7, AM, 1); kit.tx(`(${f1(mx)} ، ${f1(f(mx))})`, X(mx) + 4, Y(f(mx)) - 18, 12, AM, 1); }
+  if (st === 'observe') kit.tx('لا تلمس المحاور أبداً!', CX, TOP + 26, 14, RD, 0.6 + 0.4 * pulse);
+  return {
+    readout: st === 'predict' ? `y = ${k}/x  ؟` : st === 'move' ? `x → 0  ⇒  y → ∞` : 'مقاربتان: x=0 و y=0',
+    formula: `y = ${k}/x  ·  xy = ${k}`,
+  };
+};
+
+/** Linear function: line with a slope triangle. */
+const linearModel: Model = ({ kit, a, b, st, p }) => {
+  const m = a || 2, f = (x: number) => m * x + b;
+  const { X, Y } = plotFrame(kit, f, -4, 4, VI, 0.95);
+  const g = st === 'move' ? p : st === 'predict' ? 0 : 1;
+  if (g > 0) {
+    const x1 = 0, x2 = 1;
+    kit.ln(X(x1), Y(f(x1)), X(x2), Y(f(x1)), TE, 0.9 * g, 2);
+    kit.ln(X(x2), Y(f(x1)), X(x2), Y(f(x2)), AM, 0.9 * g, 2);
+    kit.tx('1', (X(x1) + X(x2)) / 2, Y(f(x1)) + 16, 12, TE, g);
+    kit.tx(String(m), X(x2) + 14, (Y(f(x1)) + Y(f(x2))) / 2, 12, AM, g);
+  }
+  if (st !== 'predict') kit.dot(X(0), Y(b), 7, TE, 1);
+  return {
+    readout: st === 'predict' ? `y = ${m}x + ${b}  ؟` : st === 'move' ? 'كل خطوة +1 في x تضيف a في y' : `الميل = ${m}`,
+    formula: `y = ${m}x + ${b}  ·  الميل = ${m}`,
+  };
+};
+
+/** System of two lines: intersection point is the solution. */
+const systemModel: Model = ({ kit, a, b, c, st, p, pulse }) => {
+  const m1 = a || 1, b1 = b, m2 = -(c || 1), b2 = (c || 1) * 2;
+  const f1n = (x: number) => m1 * x + b1, f2n = (x: number) => m2 * x + b2;
+  const xi = (b2 - b1) / (m1 - m2), yi = f1n(xi);
+  const lo = xi - 4, hi = xi + 4;
+  const { X, Y } = plotFrame(kit, f1n, lo, hi, TE, 0.95);
+  const pts2: Array<[number, number]> = [];
+  for (let i = 0; i <= 40; i++) { const x = lo + (hi - lo) * i / 40; pts2.push([X(x), Y(f2n(x))]); }
+  kit.poly(pts2, AM, 0, 0.95, 3);
+  const g = st === 'move' ? p : st === 'predict' ? 0 : 1;
+  if (g > 0.4) {
+    kit.dot(X(xi), Y(yi), 9, WH, 1);
+    kit.tx(`(${f1(xi)} ، ${f1(yi)})`, X(xi), Y(yi) - 22, 13, WH, 1);
+  }
+  if (st === 'observe') kit.tx('نقطة التقاطع هي الحلّ!', CX, TOP + 26, 14, TE, 0.6 + 0.4 * pulse);
+  return {
+    readout: st === 'predict' ? 'أين يتقاطع الخطّان ؟' : st === 'move' ? 'نبحث عن النقطة المشتركة…' : `x = ${f1(xi)} ، y = ${f1(yi)}`,
+    formula: `${m1}x + ${b1} = ${m2}x + ${b2}  ⇒  x = ${f1(xi)}`,
+  };
+};
+
+/** Unit circle + sine wave: the 3B1B rotating-radius classic. */
+const waveModel: Model = ({ kit, st, p, pulse }) => {
+  const r = Math.min(BW, MH) * 0.26, ccx = CX - BW * 0.22, ccy = MY - 10;
+  const theta = (st === 'move' ? p : st === 'predict' ? 0.15 : 1) * Math.PI * 2 * 1.5 + 0.4;
+  const px = ccx + r * Math.cos(theta), py = ccy - r * Math.sin(theta);
+  // circle + rotating radius
+  kit.els.push(<circle key="uc" cx={ccx} cy={ccy} r={r} fill="none" stroke={`rgba(${VI},0.9)`} strokeWidth={2.5} />);
+  kit.ln(ccx, ccy, px, py, AM, 0.95, 3);
+  kit.dot(px, py, 7, AM, 1);
+  kit.els.push(<path key="arc" d={`M ${ccx + r * 0.4} ${ccy} A ${r * 0.4} ${r * 0.4} 0 ${theta % (2 * Math.PI) > Math.PI ? 1 : 0} 0 ${ccx + r * 0.4 * Math.cos(theta)} ${ccy - r * 0.4 * Math.sin(theta)}`} fill="none" stroke={`rgba(${AM},0.8)`} strokeWidth={2} />);
+  kit.tx('θ', ccx + r * 0.55, ccy - 14, 13, AM, 0.9);
+  // sine wave to the right, traced up to theta
+  const wx0 = CX + BW * 0.02, wx1 = CX + BW * 0.44, wy = ccy;
+  const XW = (t: number) => wx0 + (t / (Math.PI * 2 * 1.5)) * (wx1 - wx0);
+  kit.ln(wx0, wy, wx1, wy, WH, 0.3, 1);
+  const pts: Array<[number, number]> = [];
+  const tMax = st === 'predict' ? 0.001 : theta;
+  for (let i = 0; i <= 60; i++) { const t = tMax * i / 60; pts.push([XW(t), wy - r * Math.sin(t)]); }
+  if (pts.length > 1) kit.poly(pts, TE, 0, 0.95, 3);
+  // connector from circle point to wave point
+  if (st !== 'predict') {
+    kit.ln(px, py, XW(theta), wy - r * Math.sin(theta), WH, 0.35 + 0.2 * pulse, 1.2);
+    kit.dot(XW(theta), wy - r * Math.sin(theta), 7, TE, 1);
+  }
+  kit.tx('sin θ', wx1 - 20, wy - r - 16, 13, TE, 0.9);
+  kit.tx('1', ccx + r + 12, ccy - 6, 12, WH, 0.7);
+  return {
+    readout: st === 'predict' ? 'ماذا يرسم نصف القطر الدوّار ؟' : st === 'move' ? `θ = ${f1(theta * 180 / Math.PI)}°  ⇒  sin θ = ${f1(Math.sin(theta))}` : 'الدائرة ترسم الموجة!',
+    formula: 'sin θ = الإحداثي العمودي على دائرة الوحدة',
+  };
+};
+
+/** Exponential growth: y = a^x with doubling dots; logadd uses the inverse log curve. */
+const expModel: Model = ({ kit, a, st, p, pulse }) => {
+  const base = Math.max(2, Math.min(3, a || 2)), f = (x: number) => Math.pow(base, x);
+  const { X, Y } = plotFrame(kit, f, -3, 3, VI, 0.95);
+  const g = st === 'move' ? p : st === 'predict' ? 0 : 1;
+  const nDots = Math.round(g * 4);
+  for (let i = 0; i <= nDots; i++) {
+    const x = i - 1;
+    kit.dot(X(x), Y(f(x)), 7, i === nDots && st === 'move' ? AM : TE, 1);
+    if (i > 0 && g > 0) kit.tx(`×${base}`, (X(x - 1) + X(x)) / 2, Math.min(Y(f(x - 1)), Y(f(x))) - 14, 11, AM, 0.9);
+  }
+  if (st !== 'predict') kit.tx(`y = ${base}ˣ`, X(2.2), Y(f(2.2)) - 20, 14, VI, 1);
+  if (st === 'observe') kit.tx('تنمو أسرع من أيّ كثيرة حدود!', CX, TOP + 26, 13, TE, 0.6 + 0.4 * pulse);
+  return {
+    readout: st === 'predict' ? `كم تساوي ${base}ˣ بعد x خطوات ؟` : st === 'move' ? `كل خطوة تضرب في ${base}` : `${base}ˣ تنفجر بسرعة`,
+    formula: `y = ${base}ˣ  ·  كل خطوة × ${base}`,
+  };
+};
+
+/** Logarithm: the inverse of exponential — grows slower and slower. */
+const logModel: Model = ({ kit, a, st, p, pulse }) => {
+  const base = Math.max(2, Math.min(10, a || 2)), f = (x: number) => Math.log(x) / Math.log(base);
+  const { X, Y } = plotFrame(kit, f, 0.05, 8, VI, 0);
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i <= 60; i++) { const x = 0.05 + 7.95 * i / 60; pts.push([X(x), Y(f(x))]); }
+  kit.poly(pts, VI, 0, 0.95, 3);
+  const g = st === 'move' ? p : st === 'predict' ? 0 : 1;
+  if (g > 0) {
+    for (const x of [1, base, base * base]) {
+      if (x > 8) break;
+      kit.dot(X(x), Y(f(x)), 7, TE, g);
+      kit.tx(`${base}^${f1(f(x))} = ${x}`, X(x), Y(f(x)) - 18, 11, TE, g);
+    }
+  }
+  if (st === 'observe') kit.tx('نموّ بطيء جداً!', CX, TOP + 26, 14, AM, 0.6 + 0.4 * pulse);
+  return {
+    readout: st === 'predict' ? `log₍${base}₎ x = ؟` : st === 'move' ? 'السؤال المعكوس: أيّ أسّ يعطي x ؟' : `log₍${base}₎(${base}²) = 2`,
+    formula: `log₍${base}₎ x = y  ⇔  ${base}^y = x`,
+  };
+};
+
 export const LEGACY_RENDERERS: Record<string, Model> = {
   groups, area, stair, balance, venn, gcd, fraction,
   tangent, secant: tangent, zoom: tangent, chain: tangent, flip: tangent,
   riemann, ftc: riemann, signarea: riemann, revolve: riemann, volume: riemann,
   numline, off: numline, num: numline, gap: numline, bounds: numline,
   disc, sqrt: sqrtModel, diffsq, thales, inscr: thales,
+  // Curves, limits & variation
+  curve: curveModel, limit: curveModel, asym: curveModel, variation: curveModel, convex: curveModel,
+  quad: curveModel, func: curveModel, ivt: curveModel, squeeze: curveModel, dist: curveModel,
+  geo: curveModel, triangle: curveModel,
+  inverse: inverseModel, linear: linearModel, system: systemModel,
+  // Trig, waves & complex numbers
+  wave: waveModel, trig: waveModel, sinx: waveModel, clock: waveModel, crot: waveModel,
+  carg: waveModel, cplx: waveModel,
+  // Exponentials, growth & logarithms
+  exponential: expModel, expk: expModel, growth: expModel, powers: expModel, logadd: logModel,
 };
 
 export const hasLegacyRenderer = (model: string) => model in LEGACY_RENDERERS;
