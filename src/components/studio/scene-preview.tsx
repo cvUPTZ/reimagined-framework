@@ -5,6 +5,7 @@ import { sceneMotion } from '@/lib/project-file';
 import { OpenMathDiagram } from './open-math-diagram';
 import { hasLegacyRenderer, renderLegacyVisual, type VisualParams, type VisualStage } from '@/lib/legacy-visuals';
 import { TELEGRAM_QR_SRC, TELEGRAM_BOT_HANDLE, TELEGRAM_BOT_URL } from '@/assets/telegram-qr';
+import { PromoMarketingScene } from './promo-marketing-scene';
 
 /**
  * Intelligent text-wrapping helper that respects word boundaries, punctuation,
@@ -105,6 +106,7 @@ export function ScenePreview({
   const textX = textAlign === 'center' ? width / 2 : textAlign === 'left' ? (portrait ? 36 : 48) : width - (portrait ? 36 : 48);
   const textAnchor = textAlign === 'center' ? 'middle' : textAlign === 'left' ? 'start' : 'end';
   const legacyModel = typeof scene.legacy?.['visualModel'] === 'string' ? (scene.legacy['visualModel'] as string) : '';
+  const promoLayout = typeof scene.legacy?.['promoLayout'] === 'string' ? (scene.legacy['promoLayout'] as string) : '';
 
   // Ambient continuous clock for studio canvas (skipped in miniature & SSR)
   const [ambientSec, setAmbientSec] = useState(0);
@@ -203,12 +205,24 @@ export function ScenePreview({
         style={{ transformOrigin: `${width / 2}px ${height / 2}px` }}
         {...(motion.wipeProgress < 1 ? { clipPath: `url(#wipe-${id})` } : {})}
       >
-        {/* Phase Header */}
-        {(scene.showPhase ?? true) && (
-          <text x={textX} y={baseTitleY - 48} textAnchor={textAnchor} className="art-phase" style={{ unicodeBidi: "plaintext" }}>
-            {phaseOf(scene).toUpperCase()}
-          </text>
-        )}
+        {promoLayout ? (
+          <PromoMarketingScene
+            layout={promoLayout}
+            project={project}
+            scene={scene}
+            width={width}
+            height={height}
+            elapsed={animTime}
+            filterId={id}
+          />
+        ) : (
+          <>
+            {/* Phase Header */}
+            {(scene.showPhase ?? true) && (
+              <text x={textX} y={baseTitleY - 48} textAnchor={textAnchor} className="art-phase" style={{ unicodeBidi: "plaintext" }}>
+                {phaseOf(scene).toUpperCase()}
+              </text>
+            )}
 
         {/* Main Text Content */}
         {(scene.showText ?? true) && (
@@ -330,10 +344,12 @@ export function ScenePreview({
             </text>
           </g>
         ))}
+          </>
+        )}
       </g>
 
       {/* Telegram QR Watermark Corner Badge (rendered across all scenes in safe corner) */}
-      {(project.qrWatermark ?? (scene.showQrBadge ?? true)) && (
+      {(project.qrWatermark ?? (scene.showQrBadge ?? true)) && !promoLayout && (
         <g
           transform={
             portrait

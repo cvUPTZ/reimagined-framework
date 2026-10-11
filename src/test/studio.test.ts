@@ -21,25 +21,33 @@ describe("studio project rules", () => {
     expect(duplicated[2]?.id).not.toBe(defaultProject.scenes[1]?.id);
   });
 
-  it("validates TV Marketing Loop project structure and round-tripping", () => {
+  it("validates TV Marketing Loop project structure, promo layouts and round-tripping", () => {
     expect(tvMarketingLoopProject.format).toBe("landscape");
-    expect(tvMarketingLoopProject.scenes).toHaveLength(10);
-    expect(totalDuration(tvMarketingLoopProject.scenes)).toBe(79);
+    expect(tvMarketingLoopProject.scenes).toHaveLength(8);
+    expect(totalDuration(tvMarketingLoopProject.scenes)).toBe(78);
     
     // Addresses both parents and students
     const bodies = tvMarketingLoopProject.scenes.map(s => s.body).join(' ');
     const titles = tvMarketingLoopProject.scenes.map(s => s.title).join(' ');
     expect(titles).toContain('الأولياء');
-    expect(titles).toContain('التلميذ');
+    expect(titles).toContain('الامتحانات');
     
-    // Contains QR code call to action
-    const qrScene = tvMarketingLoopProject.scenes.find(s => s.showQrCta === true);
-    expect(qrScene).toBeDefined();
-    expect(qrScene?.id).toBe('tv-09-qr');
+    // Contains custom marketing promo layouts on all scenes
+    const layouts = tvMarketingLoopProject.scenes.map(s => s.legacy?.['promoLayout']);
+    expect(layouts).toEqual([
+      'problem-hook',
+      'before-after',
+      'parents-pitch',
+      'students-pitch',
+      'four-pillars',
+      'curriculum-mastery',
+      'tv-grand-cta',
+      'loop-outro',
+    ]);
 
     // Round-trips through project file format without warnings or errors
     const parsed = parseProjectFile(projectFile(tvMarketingLoopProject));
-    expect(parsed.project.scenes).toHaveLength(10);
+    expect(parsed.project.scenes).toHaveLength(8);
     expect(parsed.project.format).toBe("landscape");
   });
 });

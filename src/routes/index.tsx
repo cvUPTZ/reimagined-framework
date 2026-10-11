@@ -473,7 +473,7 @@ function Studio() {
               فيديو تسويقي متكامل للشاشات التلفزيونية في المعارض ومراكز التعليم. يجمع بين استقطاب الأولياء (التفوق والتحصين من فخاخ BEM و BAC) وإلهام التلاميذ (الفهم البصري والمتعة الرياضية)، مع رمز QR تفاعلي وتكرار مستمر.
             </small>
             <div style={{ display: 'flex', gap: 6, marginTop: 2, fontSize: 9, color: 'var(--blue)' }}>
-              <span>10 مشاهد (79 ثانية)</span>
+              <span>8 مشاهد إعلانية (78 ثانية)</span>
               <span>•</span>
               <span>16:9 Widescreen TV</span>
               <span>•</span>
