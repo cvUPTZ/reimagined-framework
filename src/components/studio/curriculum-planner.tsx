@@ -21,6 +21,9 @@ import {
   PieChart,
   CheckCircle2,
   AlertTriangle,
+  PlusCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScenePreview } from './scene-preview';
@@ -37,10 +40,15 @@ import {
   exportPlanAsCSV,
   formatDateYMD,
   pad2,
+  PRODUCTION_FORMATS,
+  getChapterProductionStats,
+  createProjectForConcept,
+  matchEntryToConcept,
   type CurriculumLevel,
   type VideoPlanStatus,
   type ScheduledPlanItem,
   type CurriculumChapter,
+  type ChapterConcept,
 } from '@/lib/curriculum-planner-store';
 
 export function CurriculumPlanner({
@@ -50,12 +58,15 @@ export function CurriculumPlanner({
   onLoadProject: (project: StudioProject) => void;
   onNotify: (message: string) => void;
 }) {
-  const [plannerTab, setPlannerTab] = useState<'curriculum' | 'calendar' | 'metrics'>('curriculum');
+  const [plannerTab, setPlannerTab] = useState<'curriculum' | 'production' | 'calendar' | 'metrics'>('curriculum');
   const [level, setLevel] = useState<CurriculumLevel>('4AM');
   const [chapterId, setChapterId] = useState('4am-ch1');
   const [source, setSource] = useState<LegacySource>('intuition');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null);
+  const [showConceptGuide, setShowConceptGuide] = useState<boolean>(true);
+  const [prodFilter, setProdFilter] = useState<'all' | 'missing' | 'partial' | 'complete'>('all');
 
   // Calendar State
   const [calMonth, setCalMonth] = useState<Date>(() => new Date());
@@ -75,15 +86,30 @@ export function CurriculumPlanner({
     [allEntries, chapter],
   );
 
-  const visibleEntries = useMemo(
-    () =>
-      chapterEntries.filter(
-        entry =>
-          entry.source === source &&
-          (!query.trim() || `${entry.topic} ${entry.hook} ${entry.summary}`.toLowerCase().includes(query.trim().toLowerCase())),
-      ),
-    [chapterEntries, source, query],
+  const chapterStats = useMemo(
+    () => (chapter ? getChapterProductionStats(chapter, allEntries) : null),
+    [chapter, allEntries],
   );
+
+  const allChapterStats = useMemo(
+    () => chapters.map(ch => getChapterProductionStats(ch, allEntries)),
+    [chapters, allEntries],
+  );
+
+  const visibleEntries = useMemo(() => {
+    let list = chapterEntries.filter(entry => entry.source === source);
+    if (selectedConceptId && chapter?.concepts) {
+      const activeConcept = chapter.concepts.find(c => c.id === selectedConceptId);
+      if (activeConcept) {
+        list = list.filter(entry => matchEntryToConcept(entry, activeConcept));
+      }
+    }
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      list = list.filter(entry => `${entry.topic} ${entry.hook} ${entry.summary}`.toLowerCase().includes(q));
+    }
+    return list;
+  }, [chapterEntries, source, selectedConceptId, chapter, query]);
 
   const selected = visibleEntries.find(entry => entry.id === selectedId) ?? visibleEntries[0];
   const preview = useMemo(() => (selected ? legacyToProject(selected) : null), [selected]);
@@ -95,6 +121,7 @@ export function CurriculumPlanner({
     setChapterId(CURRICULUM_CHAPTERS[next][0]?.id ?? '');
     setQuery('');
     setSelectedId(null);
+    setSelectedConceptId(null);
   }
 
   function openProject(entry?: LegacyEntry) {
@@ -104,6 +131,14 @@ export function CurriculumPlanner({
     if (!proj) return;
     onLoadProject(proj);
     onNotify(`تم فتح فيديو: ${target.topic}`);
+  }
+
+  function startProductionForConcept(concept: ChapterConcept, targetSource: LegacySource = 'intuition') {
+    if (!chapter) return;
+    const proj = createProjectForConcept(chapter, concept, targetSource);
+    onLoadProject(proj);
+    const sourceLabel = targetSource === 'intuition' ? 'حدس بصري' : targetSource === 'mistake' ? 'فخ شائع' : targetSource === 'ready' ? 'كبسولة سريعة' : 'تمرين منهجي';
+    onNotify(`تم إنشاء مسودة فيديو لـ: ${concept.name} (${sourceLabel})`);
   }
 
   function scheduleEntry(entryId: string, dateStr: string) {
@@ -129,7 +164,7 @@ export function CurriculumPlanner({
       return;
     }
     const order: VideoPlanStatus[] = ['idea', 'draft', 'scheduled', 'published'];
-    const next = order[(order.indexOf(item.status) + 1) % order.length];
+    const next: VideoPlanStatus = order[(order.indexOf(item.status) + 1) % order.length] ?? 'idea';
     setSchedule(prev => ({
       ...prev,
       [entryId]: { ...item, status: next },
@@ -172,8 +207,8 @@ export function CurriculumPlanner({
     Object.values(schedule).forEach(item => {
       const found = allEntries.find(e => e.id === item.entryId);
       if (found) {
-        if (!map[item.date]) map[item.date] = [];
-        map[item.date].push(found);
+        const list = map[item.date] ?? (map[item.date] = []);
+        list.push(found);
       }
     });
     return map;
@@ -223,8 +258,8 @@ export function CurriculumPlanner({
           </Button>
         </div>
 
-        {/* View Switcher: Curriculum vs Calendar vs Metrics */}
-        <div style={{ display: 'flex', gap: 6, background: 'var(--secondary)', padding: 3, borderRadius: 6 }}>
+        {/* View Switcher: Curriculum vs Production vs Calendar vs Metrics */}
+        <div style={{ display: 'flex', gap: 6, background: 'var(--secondary)', padding: 3, borderRadius: 6, flexWrap: 'wrap' }}>
           <Button
             size="sm"
             variant={plannerTab === 'curriculum' ? 'default' : 'ghost'}
@@ -232,6 +267,14 @@ export function CurriculumPlanner({
             onClick={() => setPlannerTab('curriculum')}
           >
             <BookOpen size={13} style={{ marginLeft: 5 }} /> المنهاج والأبواب
+          </Button>
+          <Button
+            size="sm"
+            variant={plannerTab === 'production' ? 'default' : 'ghost'}
+            style={{ height: 28, fontSize: 11 }}
+            onClick={() => setPlannerTab('production')}
+          >
+            <Layers size={13} style={{ marginLeft: 5 }} /> خريطة المفاهيم وخطة الإنتاج
           </Button>
           <Button
             size="sm"
@@ -278,6 +321,7 @@ export function CurriculumPlanner({
                       setChapterId(item.id);
                       setQuery('');
                       setSelectedId(null);
+                      setSelectedConceptId(null);
                     }}
                   >
                     <span className="planner-chapter-number">{String(item.order).padStart(2, '0')}</span>
@@ -296,6 +340,229 @@ export function CurriculumPlanner({
               <h3>{chapter?.name.replace(/^الباب [\d و]+ · /, '')}</h3>
               <small>{chapterEntries.length} فيديو متاح في هذا الباب</small>
             </div>
+
+            {/* CHAPTER PRODUCTION GUIDE & CONCEPTS BLUEPRINT */}
+            {chapterStats && (
+              <div
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '12px 14px',
+                  marginBottom: 14,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                }}
+              >
+                {/* Header with Readiness Progress */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Layers size={16} style={{ color: 'var(--primary)' }} />
+                    <strong style={{ fontSize: 13 }}>خريطة مفاهيم الباب وأنواع الفيديوهات المطلوبة للإنتاج</strong>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        background: 'color-mix(in oklab, var(--primary) 15%, transparent)',
+                        color: 'var(--primary)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {chapter?.concepts?.length || 0} مفاهيم مقررة
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                      <span>جاهزية الإنتاج:</span>
+                      <strong style={{ color: chapterStats.readinessPercent >= 75 ? 'var(--primary)' : 'var(--gold)' }}>
+                        {chapterStats.readinessPercent}%
+                      </strong>
+                      <span style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>
+                        ({chapterStats.totalAvailable} / {chapterStats.targetTotal} فيديو)
+                      </span>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      style={{ height: 24, fontSize: 11, padding: '0 6px' }}
+                      onClick={() => setShowConceptGuide(prev => !prev)}
+                    >
+                      {showConceptGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      <span style={{ marginRight: 4 }}>{showConceptGuide ? 'طيّ الدليل' : 'عرض الدليل'}</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div style={{ height: 4, width: '100%', background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${chapterStats.readinessPercent}%`,
+                      background: chapterStats.readinessPercent >= 75 ? 'var(--primary)' : 'var(--gold)',
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+
+                {showConceptGuide && (
+                  <>
+                    {/* Educational Formats Breakdown: What are all the types of videos needed for production */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+                      {PRODUCTION_FORMATS.map(fmt => {
+                        const count = chapterStats.byFormat[fmt.source] || 0;
+                        const isMet = count >= fmt.targetPerChapter;
+                        return (
+                          <div
+                            key={fmt.source}
+                            style={{
+                              background: 'var(--background)',
+                              border: `1px solid ${isMet ? 'color-mix(in oklab, var(--primary) 30%, transparent)' : 'var(--border)'}`,
+                              borderRadius: 6,
+                              padding: '8px 10px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 4,
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span>{fmt.icon}</span> {fmt.label}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: isMet ? 'var(--primary)' : 'var(--gold)',
+                                  background: isMet
+                                    ? 'color-mix(in oklab, var(--primary) 12%, transparent)'
+                                    : 'color-mix(in oklab, var(--gold) 12%, transparent)',
+                                  padding: '1px 5px',
+                                  borderRadius: 4,
+                                }}
+                              >
+                                {count} / {fmt.targetPerChapter} {isMet ? '✓' : 'ناقص'}
+                              </span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: 10, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>
+                              {fmt.pedagogicalRole}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Concepts Checklist & Status */}
+                    <div style={{ marginTop: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: 6 }}>
+                        مفاهيم المنهاج المقررة وحالة تغطيتها في الباب:
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {chapterStats.conceptCoverage.map(item => {
+                          const isSelected = selectedConceptId === item.concept.id;
+                          return (
+                            <div
+                              key={item.concept.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: isSelected ? 'color-mix(in oklab, var(--primary) 10%, var(--background))' : 'var(--background)',
+                                border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                                borderRadius: 6,
+                                padding: '6px 10px',
+                                flexWrap: 'wrap',
+                                gap: 6,
+                              }}
+                            >
+                              <div
+                                style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', flex: 1, minWidth: 200 }}
+                                onClick={() => setSelectedConceptId(isSelected ? null : item.concept.id)}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontSize: 12, fontWeight: 600 }}>{item.concept.name}</span>
+                                  <span
+                                    style={{
+                                      fontSize: 9,
+                                      fontWeight: 600,
+                                      padding: '1px 5px',
+                                      borderRadius: 4,
+                                      background:
+                                        item.status === 'complete'
+                                          ? 'color-mix(in oklab, var(--primary) 20%, transparent)'
+                                          : item.status === 'partial'
+                                            ? 'color-mix(in oklab, var(--gold) 20%, transparent)'
+                                            : 'color-mix(in oklab, var(--coral) 20%, transparent)',
+                                      color:
+                                        item.status === 'complete'
+                                          ? 'var(--primary)'
+                                          : item.status === 'partial'
+                                            ? 'var(--gold)'
+                                            : 'var(--coral)',
+                                    }}
+                                  >
+                                    {item.status === 'complete' ? 'تغطية كاملة ✅' : item.status === 'partial' ? 'تغطية جزئية ⏳' : 'بحاجة إلى إنتاج 🔴'}
+                                  </span>
+                                </div>
+                                <small style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>{item.concept.description}</small>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                {/* Formats mini badges */}
+                                {PRODUCTION_FORMATS.map(fmt => {
+                                  const hasFmt = item.availableFormats.includes(fmt.source);
+                                  return (
+                                    <span
+                                      key={fmt.source}
+                                      title={`${fmt.label}: ${hasFmt ? 'متوفر' : 'غير متوفر بعد'}`}
+                                      style={{
+                                        fontSize: 10,
+                                        padding: '2px 5px',
+                                        borderRadius: 4,
+                                        border: hasFmt ? '1px solid var(--border)' : '1px dashed var(--border)',
+                                        opacity: hasFmt ? 1 : 0.45,
+                                        background: hasFmt ? 'var(--card)' : 'transparent',
+                                      }}
+                                    >
+                                      {fmt.icon} {fmt.badge}
+                                    </span>
+                                  );
+                                })}
+
+                                {/* Quick Produce Action */}
+                                <Button
+                                  size="sm"
+                                  variant={item.status === 'missing' ? 'default' : 'outline'}
+                                  style={{ height: 22, fontSize: 10, padding: '0 6px', gap: 4 }}
+                                  onClick={() => startProductionForConcept(item.concept, item.missingFormats[0] || 'intuition')}
+                                >
+                                  <PlusCircle size={11} /> إنتاج فيديو
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {selectedConceptId && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, padding: '4px 8px', background: 'var(--secondary)', borderRadius: 4 }}>
+                          <span style={{ fontSize: 11 }}>
+                            يتم الآن تصفية الفيديوهات لمفهوم: <strong>{chapter?.concepts?.find(c => c.id === selectedConceptId)?.name}</strong>
+                          </span>
+                          <Button size="sm" variant="ghost" style={{ height: 20, fontSize: 10 }} onClick={() => setSelectedConceptId(null)}>
+                            إلغاء التصفية (عرض كل فيديوهات الباب)
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             <div className="planner-stages" role="tablist" aria-label="نوع الفيديو">
               {STAGES.map((stage, index) => {
@@ -432,25 +699,32 @@ export function CurriculumPlanner({
 
                 {/* Scheduling controls on detail */}
                 <div style={{ width: '100%', display: 'flex', gap: 6, margin: '8px 0 16px' }}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    style={{ flex: 1, fontSize: 11 }}
-                    onClick={() => scheduleEntry(selected.id, selectedDate)}
-                  >
-                    <CalendarIcon size={12} style={{ marginLeft: 4 }} />
-                    {schedule[selected.id] ? `جدولة (${schedule[selected.id].date})` : 'جدولة للنشر'}
-                  </Button>
-                  {schedule[selected.id] && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      style={{ fontSize: 11 }}
-                      onClick={() => toggleStatus(selected.id)}
-                    >
-                      الحالة: {schedule[selected.id].status}
-                    </Button>
-                  )}
+                  {(() => {
+                    const scheduledItem = schedule[selected.id];
+                    return (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          style={{ flex: 1, fontSize: 11 }}
+                          onClick={() => scheduleEntry(selected.id, selectedDate)}
+                        >
+                          <CalendarIcon size={12} style={{ marginLeft: 4 }} />
+                          {scheduledItem ? `جدولة (${scheduledItem.date})` : 'جدولة للنشر'}
+                        </Button>
+                        {scheduledItem && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            style={{ fontSize: 11 }}
+                            onClick={() => toggleStatus(selected.id)}
+                          >
+                            الحالة: {scheduledItem.status}
+                          </Button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <Button className="planner-open" onClick={() => openProject()}>
@@ -468,7 +742,182 @@ export function CurriculumPlanner({
         </div>
       )}
 
-      {/* VIEW 2: Interactive Publishing Calendar */}
+      {/* VIEW 2: Production Blueprint & Concepts Matrix */}
+      {plannerTab === 'production' && (
+        <div style={{ flex: 1, minHeight: 0, padding: '20px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Top Banner explaining pedagogical production requirements */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <Layers size={18} style={{ color: 'var(--primary)' }} />
+                  <h3 style={{ fontSize: 16, margin: 0, fontWeight: 800 }}>دليل وخريطة الإنتاج الشاملة لمنهاج {level}</h3>
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)', maxWidth: 750, lineHeight: 1.5 }}>
+                  لإنتاج محتوى تعليمي متكامل لكل باب، يحتاج صانع المحتوى إلى 4 أنواع من الفيديوهات لكل مفهوم:
+                  <strong> الحدس البصري (Intuition)</strong> للشرح المفهومي،
+                  <strong> فخاخ وأخطاء (Traps)</strong> للتحصين ضد الأخطاء،
+                  <strong> كبسولات سريعة (Shorts)</strong> للنشر والتحدي،
+                  و<strong> تمارين منهجية (Solved Problems)</strong> للتدريب على التصحيح النموذجي.
+                </p>
+              </div>
+
+              {/* Filter Chips */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Button size="sm" variant={prodFilter === 'all' ? 'default' : 'outline'} style={{ height: 26, fontSize: 11 }} onClick={() => setProdFilter('all')}>
+                  جميع المفاهيم ({chapters.reduce((acc, c) => acc + (c.concepts?.length || 0), 0)})
+                </Button>
+                <Button size="sm" variant={prodFilter === 'missing' ? 'destructive' : 'outline'} style={{ height: 26, fontSize: 11 }} onClick={() => setProdFilter('missing')}>
+                  🔴 بحاجة لإنتاج
+                </Button>
+                <Button size="sm" variant={prodFilter === 'partial' ? 'secondary' : 'outline'} style={{ height: 26, fontSize: 11 }} onClick={() => setProdFilter('partial')}>
+                  ⏳ تغطية جزئية
+                </Button>
+                <Button size="sm" variant={prodFilter === 'complete' ? 'default' : 'outline'} style={{ height: 26, fontSize: 11 }} onClick={() => setProdFilter('complete')}>
+                  ✅ مكتمل الإنتاج
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Chapters Production Breakdown */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {allChapterStats.map(stat => {
+              const ch = chapters.find(c => c.id === stat.chapterId);
+              if (!ch) return null;
+              const filteredConcepts = stat.conceptCoverage.filter(c => prodFilter === 'all' || c.status === prodFilter);
+              if (prodFilter !== 'all' && !filteredConcepts.length) return null;
+
+              return (
+                <div key={ch.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="planner-chapter-number" style={{ width: 24, height: 24, fontSize: 11 }}>{String(ch.order).padStart(2, '0')}</span>
+                      <strong style={{ fontSize: 14 }}>{ch.name}</strong>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
+                        الجاهزية: <strong style={{ color: stat.readinessPercent >= 75 ? 'var(--primary)' : 'var(--gold)' }}>{stat.readinessPercent}%</strong> ({stat.totalAvailable}/{stat.targetTotal} فيديو)
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        style={{ height: 24, fontSize: 11 }}
+                        onClick={() => {
+                          setChapterId(ch.id);
+                          setPlannerTab('curriculum');
+                        }}
+                      >
+                        عرض في المنهاج ←
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Concept Rows */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {filteredConcepts.map(item => (
+                      <div
+                        key={item.concept.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          background: 'var(--background)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 6,
+                          padding: '8px 12px',
+                          flexWrap: 'wrap',
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 220 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700 }}>{item.concept.name}</span>
+                            <span
+                              style={{
+                                fontSize: 9,
+                                padding: '1px 5px',
+                                borderRadius: 4,
+                                background:
+                                  item.status === 'complete'
+                                    ? 'color-mix(in oklab, var(--primary) 20%, transparent)'
+                                    : item.status === 'partial'
+                                      ? 'color-mix(in oklab, var(--gold) 20%, transparent)'
+                                      : 'color-mix(in oklab, var(--coral) 20%, transparent)',
+                                color:
+                                  item.status === 'complete'
+                                    ? 'var(--primary)'
+                                    : item.status === 'partial'
+                                      ? 'var(--gold)'
+                                      : 'var(--coral)',
+                              }}
+                            >
+                              {item.status === 'complete' ? 'مكتمل ✅' : item.status === 'partial' ? 'جزئي ⏳' : 'ناقص 🔴'}
+                            </span>
+                          </div>
+                          <small style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{item.concept.description}</small>
+                        </div>
+
+                        {/* Production Status for the 4 Video Formats */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          {PRODUCTION_FORMATS.map(fmt => {
+                            const isAvailable = item.availableFormats.includes(fmt.source);
+                            return (
+                              <div
+                                key={fmt.source}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 10,
+                                  padding: '3px 6px',
+                                  borderRadius: 4,
+                                  background: isAvailable
+                                    ? 'color-mix(in oklab, var(--primary) 12%, transparent)'
+                                    : 'color-mix(in oklab, var(--muted) 40%, transparent)',
+                                  border: `1px solid ${isAvailable ? 'color-mix(in oklab, var(--primary) 30%, transparent)' : 'var(--border)'}`,
+                                  color: isAvailable ? 'var(--primary)' : 'var(--muted-foreground)',
+                                }}
+                              >
+                                <span>{fmt.icon}</span>
+                                <span>{fmt.badge}</span>
+                                {isAvailable ? (
+                                  <Check size={11} style={{ color: 'var(--primary)' }} />
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    style={{ height: 16, padding: '0 2px', fontSize: 9, color: 'var(--gold)' }}
+                                    onClick={() => startProductionForConcept(item.concept, fmt.source)}
+                                  >
+                                    + إنتاج
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          <Button
+                            size="sm"
+                            variant="default"
+                            style={{ height: 24, fontSize: 10, gap: 4 }}
+                            onClick={() => startProductionForConcept(item.concept, item.missingFormats[0] || 'intuition')}
+                          >
+                            <PlusCircle size={11} /> إنتاج في الستوديو
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 3: Interactive Publishing Calendar */}
       {plannerTab === 'calendar' && (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '16px 24px', overflowY: 'auto' }}>
           {/* Calendar Cadence Bar */}

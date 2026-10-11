@@ -8,6 +8,8 @@ import {
   getAllCurriculumEntries,
   matchesChapter,
   parseDateYMD,
+  getChapterProductionStats,
+  createProjectForConcept,
   type ScheduledPlanItem,
 } from '@/lib/curriculum-planner-store';
 
@@ -68,7 +70,7 @@ describe('Curriculum Planner Store & Matching Engine', () => {
     const schedule: Record<string, ScheduledPlanItem> = {
       'test-1': {
         id: 'test-1',
-        entryId: allEntries[0].id,
+        entryId: allEntries[0]!.id,
         level: '4AM',
         date: '2026-10-15',
         status: 'scheduled',
@@ -79,5 +81,33 @@ describe('Curriculum Planner Store & Matching Engine', () => {
     expect(csv.startsWith('\ufeff')).toBe(true); // UTF-8 BOM present
     expect(csv).toContain('2026-10-15');
     expect(csv).toContain('scheduled');
+  });
+
+  it('defines concepts and calculates production stats for each chapter', () => {
+    const chapters4AM = CURRICULUM_CHAPTERS['4AM'];
+    const chapters3AS = CURRICULUM_CHAPTERS['3AS'];
+
+    // Every chapter has an array of concepts
+    for (const ch of [...chapters4AM, ...chapters3AS]) {
+      expect(ch.concepts.length).toBeGreaterThanOrEqual(3);
+      for (const concept of ch.concepts) {
+        expect(concept.name.length).toBeGreaterThan(0);
+        expect(concept.description.length).toBeGreaterThan(0);
+        expect(concept.keywords.length).toBeGreaterThan(0);
+      }
+    }
+
+    // Verify PGCD chapter stats
+    const pgcdChapter = chapters4AM[0]!;
+    const stats = getChapterProductionStats(pgcdChapter, allEntries);
+    expect(stats.totalAvailable).toBeGreaterThan(0);
+    expect(stats.conceptCoverage.length).toBe(pgcdChapter.concepts.length);
+    expect(stats.readinessPercent).toBeGreaterThan(0);
+
+    // Verify concept project initialization
+    const project = createProjectForConcept(pgcdChapter, pgcdChapter.concepts[0]!, 'intuition');
+    expect(project).toBeDefined();
+    expect(project.scenes.length).toBeGreaterThanOrEqual(3);
+    expect(project.topic).toBe(pgcdChapter.concepts[0]!.name);
   });
 });
