@@ -83,8 +83,8 @@ export function OpenMathDiagram({ visual, expression, elapsed, duration }: {
       <text x={195} y={26} textAnchor="middle" fill={gold} fontSize={20}>f′({x0.toFixed(1)}) = {slope.toFixed(2)}</text>
     </g>}
     {visual === 'curve' && pointVisible && <text x={labelX} y={Math.max(72, py - 22)} textAnchor="middle" fill={gold} fontSize={17} opacity={annotationQ}>({x0.toFixed(1)}, {y0.toFixed(1)})</text>}
-    <text x={195} y={350} textAnchor="middle" fill={visual === 'tangent' ? gold : green} fontSize={18} opacity={annotationQ}>
+    {(visual === 'tangent' || visual === 'integral') && <text x={195} y={350} textAnchor="middle" fill={visual === 'tangent' ? gold : green} fontSize={18} opacity={annotationQ}>
       {visual === 'tangent' ? 'f′(x₀) = Δy / Δx' : visual === 'integral' ? 'Σ f(xᵢ) Δx → ∫ f(x) dx' : `f(x) = ${expr}`}
-    </text>
+    </text>}
   </g>;
 }

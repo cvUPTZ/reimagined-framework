@@ -250,7 +250,7 @@ export function ScenePreview({
           const isDupOfBody = lines.some(l => l.trim().toLowerCase() === expr.toLowerCase());
           if (isDupOfBody) return null;
           return (
-            <text x={width / 2} y={expressionY} textAnchor="middle" className="art-expression" fill="var(--foreground)">
+            <text x={width / 2} y={expressionY + (visual === 'tangent' || visual === 'integral' ? 26 : 0)} textAnchor="middle" className="art-expression" fill="var(--foreground)">
               {expr}
             </text>
           );
