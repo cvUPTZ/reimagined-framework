@@ -320,7 +320,186 @@ const fraction: Model = ({ kit, a, b, c, params, st, p, pulse }) => {
   };
 };
 
-export const LEGACY_RENDERERS: Record<string, Model> = { groups, area, stair, balance, venn, gcd, fraction };
+/** Shared plot frame: axes + a sampled curve, returns pixel mappers. */
+function plotFrame(kit: Kit, f: (x: number) => number, xLo: number, xHi: number, curveColor: string, curveQ: number) {
+  const sqz = Math.min(BW * 0.9, MH * 0.92), px0 = CX - sqz / 2, py0 = MY - sqz / 2;
+  const ys: number[] = [];
+  for (let i = 0; i <= 60; i++) ys.push(f(xLo + (xHi - xLo) * i / 60));
+  const yLo = Math.min(...ys, 0), yHi = Math.max(...ys, 0), pad = (yHi - yLo) * 0.12 + 0.4;
+  const X = (x: number) => px0 + (x - xLo) / (xHi - xLo) * sqz;
+  const Y = (y: number) => py0 + sqz - (y - (yLo - pad)) / (yHi - yLo + 2 * pad) * sqz;
+  kit.box(px0, py0, sqz, sqz, WH, 0.03, 0.4, 1);
+  if (yLo < 0 && yHi > 0) kit.ln(px0, Y(0), px0 + sqz, Y(0), WH, 0.35, 1);
+  if (xLo < 0 && xHi > 0) kit.ln(X(0), py0, X(0), py0 + sqz, WH, 0.35, 1);
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i <= 60; i++) { const x = xLo + (xHi - xLo) * i / 60; pts.push([X(x), Y(f(x))]); }
+  kit.poly(pts, curveColor, 0, curveQ, 3);
+  return { X, Y, px0, py0, sqz };
+}
+
+/** Secant → tangent zoom on y = x²/4 at x₀ = a (3B1B derivative classic). */
+const tangent: Model = ({ kit, a, st, p, pulse }) => {
+  const f = (x: number) => x * x / 4, df = (x: number) => x / 2;
+  const x0 = Math.max(0.5, Math.min(3, a || 1));
+  const { X, Y } = plotFrame(kit, f, -3.6, 3.6, VI, 0.95);
+  const h = st === 'move' ? 2.4 * (1 - p) + 0.12 : st === 'predict' ? 2.4 : 0.0001;
+  const x1 = x0 + h;
+  const slope = st === 'observe' || st === 'general' || h < 0.2 ? df(x0) : (f(x1) - f(x0)) / h;
+  const line = (m: number, through: number, c0: string, q: number, lw: number) => {
+    const yA = f(through) + m * (-3.4 - through), yB = f(through) + m * (3.4 - through);
+    kit.ln(X(-3.4), Y(yA), X(3.4), Y(yB), c0, q, lw);
+  };
+  if (st === 'predict' || st === 'move') { line(slope, x0, TE, 0.9, 2.5); kit.dot(X(x1), Y(f(x1)), 7, TE, 0.95); }
+  line(df(x0), x0, AM, st === 'predict' ? 0.25 : 0.95, 2.5);
+  kit.dot(X(x0), Y(f(x0)), 8, AM, 1);
+  if (st === 'observe') kit.tx('الميل = f′(x₀)', X(x0) + 66, Y(f(x0)) - 26, 13, AM, 0.6 + 0.4 * pulse);
+  return {
+    readout: st === 'predict' ? `الميل عند x=${f1(x0)} ؟` : st === 'move' ? `h = ${f1(h)}  ⇒  ميل ≈ ${f1(slope)}` : `f′(${f1(x0)}) = ${f1(df(x0))}`,
+    formula: `f′(x₀) = lim(h→0) (f(x₀+h) − f(x₀)) / h`,
+  };
+};
+
+/** Riemann rectangles converging to the area under y = √x + 1. */
+const riemann: Model = ({ kit, a, st, p }) => {
+  const f = (x: number) => Math.sqrt(Math.max(0, x)) + 1, lo = 0, hi = 4;
+  const exact = 2 / 3 * Math.pow(hi, 1.5) + hi;
+  const n = st === 'move' ? 2 + Math.round(p * 14) : st === 'predict' ? 4 : 16;
+  const { X, Y, px0, sqz } = plotFrame(kit, f, lo - 0.3, hi + 0.3, VI, 0.95);
+  const dx = (hi - lo) / n;
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const x = lo + i * dx, hgt = f(x);
+    sum += hgt * dx;
+    kit.box(X(x), Y(hgt), Math.max(1, X(x + dx) - X(x) - 1), Y(0) - Y(hgt), TE, 0.3, 0.85, 1.2);
+  }
+  kit.ln(px0, Y(0), px0 + sqz, Y(0), WH, 0.4, 1);
+  return {
+    readout: st === 'predict' ? 'المساحة تحت المنحنى ؟' : st === 'move' ? `${n} مستطيل  ⇒  Σ ≈ ${f1(sum)}` : `∫ = ${f1(exact)}`,
+    formula: `lim(n→∞) Σ f(xᵢ)·Δx = ∫₀⁴ f = ${f1(exact)}`,
+  };
+};
+
+/** Number line: tick marks, a marker sliding from a to b, and the gap error at observe. */
+const numline: Model = ({ kit, a, b, st, p, pulse }) => {
+  const lo = Math.min(0, a, b) - 1, hi = Math.max(a, b, 10) + 1;
+  const y = MY + 20, x0 = CX - BW * 0.42, x1 = CX + BW * 0.42;
+  const X = (z: number) => x0 + (z - lo) / (hi - lo) * (x1 - x0);
+  kit.ln(x0, y, x1, y, WH, 0.8, 2.5);
+  kit.poly([[x1, y], [x1 - 10, y - 5], [x1 - 10, y + 5]], WH, 0.8, 0);
+  for (let z = Math.ceil(lo); z <= hi; z++) {
+    kit.ln(X(z), y - 7, X(z), y + 7, WH, 0.6, 1.5);
+    kit.tx(String(z), X(z), y + 22, 12, WH, 0.8);
+  }
+  const pos = st === 'move' ? a + (b - a) * p : st === 'predict' ? a : b;
+  kit.ln(X(a), y - 26, X(a), y - 12, VI, 0.9, 2.5);
+  kit.dot(X(pos), y, 9, AM, 1);
+  kit.tx(f1(pos) === pos ? String(pos) : String(f1(pos)), X(pos), y - 22, 14, AM, 1);
+  if (st === 'observe') {
+    kit.ln(X(a), y - 44, X(b), y - 44, RD, 0.4 + 0.5 * pulse, 3);
+    kit.tx(`الفرق = ${f1(Math.abs(b - a))}`, (X(a) + X(b)) / 2, y - 58, 13, RD, 1);
+  }
+  return {
+    readout: st === 'predict' ? `من ${a} إلى ${b} ؟` : st === 'move' ? `الموضع = ${f1(pos)}` : st === 'observe' ? `المسافة = ${f1(Math.abs(b - a))}` : '',
+    formula: `|${b} − ${a}| = ${f1(Math.abs(b - a))}`,
+  };
+};
+
+/** Discriminant: parabola y = x² + bx + c, roots appear only when Δ ≥ 0. */
+const disc: Model = ({ kit, b, c, st, pulse }) => {
+  const f = (x: number) => x * x + b * x + c;
+  const D = b * b - 4 * c;
+  const vx = -b / 2, span = Math.max(3.5, Math.abs(vx) + 3);
+  const { X, Y } = plotFrame(kit, f, vx - span, vx + span, VI, 0.95);
+  const bad = st === 'observe';
+  if (D >= 0) {
+    const r1 = (-b - Math.sqrt(D)) / 2, r2 = (-b + Math.sqrt(D)) / 2;
+    const q = st === 'predict' ? 0.3 : 1;
+    kit.dot(X(r1), Y(0), 8, bad ? RD : TE, q); kit.dot(X(r2), Y(0), 8, bad ? RD : TE, q);
+    if (st !== 'predict') { kit.tx(f1(r1) === r1 ? String(r1) : String(f1(r1)), X(r1), Y(0) + 20, 12, TE, 1); kit.tx(f1(r2) === r2 ? String(r2) : String(f1(r2)), X(r2), Y(0) + 20, 12, TE, 1); }
+  } else if (st !== 'predict') {
+    kit.tx('لا يقطع المحور!', CX, MY - MH * 0.32, 14, RD, 0.6 + 0.4 * pulse);
+  }
+  const dc = D > 0 ? TE : D === 0 ? AM : RD;
+  kit.tx(`Δ = ${b}² − 4×1×${c} = ${D}`, CX, TOP + 26, 15, dc, 1);
+  return {
+    readout: st === 'predict' ? 'كم حلّاً للمعادلة ؟' : D > 0 ? `Δ = ${D} > 0  ⇒  حلّان` : D === 0 ? `Δ = 0  ⇒  حلّ مزدوج` : `Δ = ${D} < 0  ⇒  لا حلّ`,
+    formula: `Δ = b² − 4ac = ${D}`, bad: D < 0,
+  };
+};
+
+/** Square root: a square of area a, its side is √a. */
+const sqrtModel: Model = ({ kit, a, st, p, pulse }) => {
+  const area2 = Math.max(1, a * a || 9), side = Math.sqrt(area2);
+  const U = Math.min(BW * 0.62, MH * 0.66) / side, s = side * U, x0 = CX - s / 2, y0 = MY - s / 2 + 10;
+  const g = st === 'move' ? p : st === 'predict' ? 0 : 1;
+  kit.box(x0, y0, s, s, VI, 0.22 + 0.1 * g, 0.9, 2);
+  const gridN = Math.round(side);
+  if (Number.isInteger(side) && gridN <= 12) for (let i = 1; i < gridN; i++) {
+    kit.ln(x0 + i * U, y0, x0 + i * U, y0 + s, WH, 0.18 * g, 1);
+    kit.ln(x0, y0 + i * U, x0 + s, y0 + i * U, WH, 0.18 * g, 1);
+  }
+  kit.ln(x0, y0 + s + 12, x0 + s, y0 + s + 12, AM, 0.95, 2.5);
+  kit.tx(`√${area2}${Number.isInteger(side) ? ` = ${side}` : ` ≈ ${f1(side)}`}`, CX, y0 + s + 30, 15, AM, 1);
+  kit.tx(`المساحة = ${area2}`, CX, y0 + s / 2, 18, WH, 0.9);
+  if (st === 'observe' && !Number.isInteger(side)) kit.tx('ليس عدداً صحيحاً!', CX, y0 - 22, 14, RD, 0.5 + 0.5 * pulse);
+  return {
+    readout: st === 'predict' ? `√${area2} = ؟` : st === 'move' ? `الضلع × نفسه = ${area2}` : `√${area2} ${Number.isInteger(side) ? `= ${side}` : `≈ ${f1(side)}`}`,
+    formula: `√${area2} × √${area2} = ${area2}`,
+  };
+};
+
+/** Difference of squares: a² − b² rearranged into the rectangle (a−b)(a+b). */
+const diffsq: Model = ({ kit, a, b, st, p }) => {
+  const A = Math.max(2, a), B = Math.max(1, Math.min(b, A - 1));
+  const U = Math.min(BW * 0.6, MH * 0.6) / A, s = A * U, x0 = CX - s / 2, y0 = MY - s / 2 + 8;
+  const g = st === 'move' ? p : st === 'predict' ? 0 : 1;
+  kit.box(x0, y0, s, s, VI, 0.25, 0.9, 2);
+  kit.box(x0 + s - B * U, y0, B * U, B * U, RD, 0.45, 0.95, 1.5);
+  // the strip that slides to the bottom to form the rectangle
+  const stripW = (A - B) * U, stripH = B * U;
+  const sx = x0, sy0 = y0 + B * U, sy1 = y0 + s; // from left-middle to bottom
+  const sy = sy0 + (sy1 - sy0) * g;
+  kit.box(sx, sy - stripH + (stripH) * 0, stripW, stripH, TE, 0.4, 0.95, 1.5);
+  kit.tx(`${A}²`, x0 + s / 2, y0 + s / 2, 20, WH, 0.9);
+  kit.tx(`−${B}²`, x0 + s - B * U / 2, y0 + B * U / 2, 15, RD, 1);
+  if (g > 0.5) kit.tx(`(${A}−${B})×(${A}+${B}) = ${(A - B) * (A + B)}`, CX, y0 + s + 26, 14, AM, g);
+  return {
+    readout: st === 'predict' ? `${A}² − ${B}² = ؟` : st === 'move' ? 'نحرّك الشريط…' : `${A}² − ${B}² = ${A * A - B * B}`,
+    formula: `a² − b² = (a − b)(a + b) = ${A - B}×${A + B}`,
+  };
+};
+
+/** Thales: right angle inscribed in a semicircle, C sliding along the arc. */
+const thales: Model = ({ kit, st, p, pulse }) => {
+  const r = Math.min(BW, MH) * 0.36, cy = MY + 30, ax = CX - r, bx = CX + r;
+  const t = st === 'move' ? 0.25 + 0.5 * p : 0.55;
+  const cxp = CX + r * Math.cos(Math.PI * (1 - t)), cyp = cy - r * Math.sin(Math.PI * (1 - t));
+  kit.els.push(<path key="semi" d={`M ${ax} ${cy} A ${r} ${r} 0 0 1 ${bx} ${cy}`} fill="none" stroke={`rgba(${VI},0.95)`} strokeWidth={3} />);
+  kit.ln(ax, cy, bx, cy, WH, 0.8, 2.5);
+  kit.ln(ax, cy, cxp, cyp, TE, 0.95, 2.5);
+  kit.ln(bx, cy, cxp, cyp, AM, 0.95, 2.5);
+  kit.dot(ax, cy, 6, WH, 0.9); kit.dot(bx, cy, 6, WH, 0.9); kit.dot(cxp, cyp, 8, TE, 1);
+  // right-angle marker at C
+  const v1 = Math.atan2(cy - cyp, ax - cxp), v2 = Math.atan2(cy - cyp, bx - cxp), m = 14;
+  const p1: [number, number] = [cxp + m * Math.cos(v1), cyp + m * Math.sin(v1)];
+  const p2: [number, number] = [cxp + m * Math.cos(v2), cyp + m * Math.sin(v2)];
+  const p3: [number, number] = [p1[0] + p2[0] - cxp, p1[1] + p2[1] - cyp];
+  kit.poly([p1, p3, p2], st === 'observe' ? RD : AM, 0, 0.9, 2);
+  kit.tx('A', ax - 16, cy + 6, 14, WH, 1); kit.tx('B', bx + 16, cy + 6, 14, WH, 1); kit.tx('C', cxp, cyp - 20, 14, TE, 1);
+  if (st === 'observe') kit.tx('90° دائماً!', CX, cy - r - 16, 15, AM, 0.6 + 0.4 * pulse);
+  return {
+    readout: st === 'predict' ? 'ما قياس الزاوية C ؟' : st === 'move' ? 'حرّك C على القوس…' : '∠ACB = 90°',
+    formula: 'الزاوية المحيطية بالنصف قطر = 90°',
+  };
+};
+
+export const LEGACY_RENDERERS: Record<string, Model> = {
+  groups, area, stair, balance, venn, gcd, fraction,
+  tangent, secant: tangent, zoom: tangent, chain: tangent, flip: tangent,
+  riemann, ftc: riemann, signarea: riemann, revolve: riemann, volume: riemann,
+  numline, off: numline, num: numline, gap: numline, bounds: numline,
+  disc, sqrt: sqrtModel, diffsq, thales, inscr: thales,
+};
 
 export const hasLegacyRenderer = (model: string) => model in LEGACY_RENDERERS;
 export const renderedLegacyModels = () => Object.keys(LEGACY_RENDERERS);
