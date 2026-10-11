@@ -16,8 +16,8 @@ describe('project compatibility and rendering timing', () => {
     expect(parseProjectFile(projectFile(defaultProject)).project).toEqual(defaultProject);
   });
   it('rejects non-positive durations and duplicate scene ids', () => {
-    expect(() => parseProjectFile({ ...defaultProject, scenes: [{ ...defaultProject.scenes[0], duration: 0 }] })).toThrow();
-    expect(() => parseProjectFile({ ...defaultProject, scenes: [defaultProject.scenes[0], defaultProject.scenes[0]] })).toThrow();
+    expect(() => parseProjectFile({ ...defaultProject, scenes: [{ ...defaultProject.scenes[0]!, duration: 0 }] })).toThrow();
+    expect(() => parseProjectFile({ ...defaultProject, scenes: [defaultProject.scenes[0]!, defaultProject.scenes[0]!] })).toThrow();
   });
   it('selects the next scene at exactly the boundary', () => {
     expect(sceneAtTime(defaultProject, 3).index).toBe(1);
@@ -25,21 +25,21 @@ describe('project compatibility and rendering timing', () => {
     expect(sceneAtTime(defaultProject, 4).localTime).toBe(1);
   });
   it('computes animation from elapsed time, including paused mid-animation', () => {
-    const scene = { ...defaultProject.scenes[0], id: 'fade', title: '', label: '', body: '', duration: 3, kind: 'hook' as const, animation: 'Fade' as const };
+    const scene = { ...defaultProject.scenes[0]!, id: 'fade', title: '', label: '', body: '', duration: 3, kind: 'hook' as const, animation: 'Fade' as const };
     expect(sceneMotion(scene, .35).opacity).toBe(.5);
     expect(sceneMotion(scene, 1).opacity).toBe(1);
   });
   it('computes slide left, zoom in, wipe and custom transition durations accurately', () => {
-    const slideLeftScene = { ...defaultProject.scenes[0], id: 'slide-left', title: '', label: '', body: '', duration: 3, kind: 'hook' as const, animation: 'Slide left' as const, transitionDuration: 1.0 };
+    const slideLeftScene = { ...defaultProject.scenes[0]!, id: 'slide-left', title: '', label: '', body: '', duration: 3, kind: 'hook' as const, animation: 'Slide left' as const, transitionDuration: 1.0 };
     const motionHalf = sceneMotion(slideLeftScene, 0.5);
     expect(motionHalf.opacity).toBe(0.5);
     expect(motionHalf.offsetX).toBeCloseTo(22.5);
 
-    const zoomScene = { ...defaultProject.scenes[0], id: 'zoom', title: '', label: '', body: '', duration: 3, kind: 'hook' as const, animation: 'Zoom in' as const, transitionDuration: 1.0 };
+    const zoomScene = { ...defaultProject.scenes[0]!, id: 'zoom', title: '', label: '', body: '', duration: 3, kind: 'hook' as const, animation: 'Zoom in' as const, transitionDuration: 1.0 };
     expect(sceneMotion(zoomScene, 0.5).scale).toBeCloseTo(0.95);
     expect(sceneMotion(zoomScene, 1.0).scale).toBe(1);
 
-    const wipeScene = { ...defaultProject.scenes[0], id: 'wipe', title: '', label: '', body: '', duration: 3, kind: 'hook' as const, animation: 'Wipe' as const, transitionDuration: 1.0 };
+    const wipeScene = { ...defaultProject.scenes[0]!, id: 'wipe', title: '', label: '', body: '', duration: 3, kind: 'hook' as const, animation: 'Wipe' as const, transitionDuration: 1.0 };
     expect(sceneMotion(wipeScene, 0.4).wipeProgress).toBeCloseTo(0.4);
     expect(sceneMotion(wipeScene, 1.0).wipeProgress).toBe(1.0);
   });
@@ -48,7 +48,7 @@ describe('project compatibility and rendering timing', () => {
       ...defaultProject,
       scenes: [
         {
-          ...defaultProject.scenes[0],
+          ...defaultProject.scenes[0]!,
           fontSize: 54,
           fontFamily: 'Tajawal' as const,
           fontWeight: 700 as const,
