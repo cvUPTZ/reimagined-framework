@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { AudioLines, BookOpen, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clapperboard, Copy, Download, Expand, Eye, EyeOff, FilePlus, Film, FolderOpen, History, Layers, LayoutTemplate, Mic, MicOff, MoreHorizontal, Palette, Pause, Play, Plus, Redo2, RotateCcw, Search, Settings2, ShieldCheck, SkipBack, SlidersHorizontal, Sparkles, Trash2, Type, Undo2, Upload, Volume2, VolumeX, X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { AudioLines, BookOpen, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clapperboard, Copy, Download, Expand, Eye, EyeOff, FilePlus, Film, FolderOpen, History, Layers, LayoutTemplate, Mic, MicOff, MoreHorizontal, Palette, Pause, Play, Plus, Redo2, Repeat, RotateCcw, Search, Settings2, ShieldCheck, SkipBack, SlidersHorizontal, Sparkles, Trash2, Tv, Type, Undo2, Upload, Volume2, VolumeX, X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -10,7 +10,7 @@ import { CurriculumPlanner } from '@/components/studio/curriculum-planner';
 import { sceneStart, trimScene } from '@/lib/timeline';
 import { parseProjectFile, projectFile, sceneAtTime } from '@/lib/project-file';
 import { buildScenes, defaultBrandKits, duplicateScene, moveScene, totalDuration, type Scene, type StudioProject } from '@/lib/studio';
-import { phaseNames, phaseOf, phaseClass, referenceProject, threeBlueOneBrownProject, originalZipProject, bacLogarithmProject, bacIntegralsProject, timecode } from '@/lib/reference-project';
+import { phaseNames, phaseOf, phaseClass, referenceProject, threeBlueOneBrownProject, originalZipProject, bacLogarithmProject, bacIntegralsProject, tvMarketingLoopProject, timecode } from '@/lib/reference-project';
 import { evaluateMathExpression } from '@/lib/math-engine';
 import { lessonToStudioProject, searchEducationalLessons } from '@/lib/educational-library';
 import { legacyCounts, legacyLevels, legacyToProject, searchLegacy, SOLVE_TYPES, type LegacySource } from '@/lib/legacy-library';
@@ -36,6 +36,7 @@ function Studio() {
   const [panel, setPanel] = useState<Panel>(null);
   const [inspector, setInspector] = useState('Content');
   const [playing, setPlaying] = useState(false);
+  const [loop, setLoop] = useState(true);
   const [time, setTime] = useState(0);
   const [saved, setSaved] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -141,14 +142,18 @@ function Studio() {
       last = now;
       setTime(t => {
         const next = Math.min(duration, t + delta);
-        if (next >= duration) setPlaying(false);
+        if (next >= duration) {
+          if (loop) return 0;
+          setPlaying(false);
+          return duration;
+        }
         return next;
       });
       frame = requestAnimationFrame(tick);
     }
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, duration]);
+  }, [playing, duration, loop]);
 
   useEffect(() => {
     if (project.scenes.length > 0) {
@@ -197,7 +202,7 @@ function Studio() {
       <div className="workspace-toolbar"><div className="workspace-heading"><span className="live-dot"/><strong>Video editor</strong><span className="toolbar-divider"/><small>{project.scenes.length} scenes · {timecode(duration)}</small></div><div className="toolbar-actions"><IconButton icon={Undo2} label="Undo" onClick={undo} disabled={!history.length}/><IconButton icon={Redo2} label="Redo" onClick={redo} disabled={!future.length}/><span className="toolbar-divider"/><Button variant="ghost" size="sm" onClick={() => setPanel('templates')}><Sparkles size={16}/>Templates</Button><IconButton icon={MoreHorizontal} label="Workspace settings" onClick={() => setPanel('settings')}/></div></div>
       <main className="editor-grid">
         <section className="scene-sidebar"><div className="section-heading"><div><Layers size={16}/><h2>Scenes</h2><span className="count">{String(project.scenes.length).padStart(2,'0')}</span></div><IconButton icon={Plus} label="Add scene" onClick={add}/></div><div className="scene-list">{project.scenes.map((s,i) => <div key={s.id} className={`scene-item ${selected === i ? 'scene-selected' : ''}`} draggable onDragStart={e => e.dataTransfer.setData('text/plain', String(i))} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (!Number.isInteger(from)) return; reorder(from, i); }}><Button variant="ghost" className="scene-select-button" aria-label={`Select scene ${i+1}: ${s.title}`} aria-pressed={selected === i} onClick={() => select(i)}><div className={`scene-thumb ${phaseClass(phaseOf(s))}`}><ScenePreview project={project} scene={s} miniature/><span className="thumbnail-duration">{s.duration}s</span></div><div className="scene-details"><div className="scene-number">{String(i+1).padStart(2,'0')}<span className={`phase-label ${phaseClass(phaseOf(s))}`}>{phaseOf(s)}</span></div><strong dir="auto">{s.title}</strong><small>{s.duration.toFixed(1)} sec<span>·</span>{s.animation ?? 'Fade'}</small></div></Button></div>)}</div><Button variant="outline" className="add-scene" size="sm" onClick={add}><Plus size={15}/>Add scene</Button><div className="sidebar-footer"><span className="live-dot"/>Story arc<span>Custom<ChevronDown size={11}/></span></div></section>
-        <section className="preview-area"><div className="preview-heading"><div><span className="overline">CANVAS</span><span className="canvas-ratio">{ratio}<span>·</span>{project.format === 'portrait' ? '1080 × 1920' : '1920 × 1080'}</span></div><div className="preview-tools"><select aria-label="Canvas zoom" value={zoom} onChange={e => setZoom(e.target.value)}><option>Fit</option><option>80%</option><option>60%</option></select><IconButton icon={Expand} label="Full screen canvas" onClick={() => void stage.current?.requestFullscreen?.()}/></div></div><div className={`canvas-workspace ${project.format === 'landscape' ? 'canvas-landscape' : ''}`}><div className={`video-stage zoom-${zoom === 'Fit' ? 'fit' : zoom.replace('%','')}`} ref={stage}><ScenePreview key={scene.id} project={project} scene={scene} elapsed={sceneElapsed} playing={playing} safeZones={safeZones}/></div><span className="canvas-scene-label">SCENE {String(selected+1).padStart(2,'0')}<span>/ {String(project.scenes.length).padStart(2,'0')}</span></span></div><div className="playback-bar"><div className="playback-left"><IconButton icon={muted ? VolumeX : Volume2} label="Toggle audio" onClick={() => setMuted(m => !m)}/><span className="preview-quality">HD</span></div><div className="playback-center"><IconButton icon={SkipBack} label="Restart playback" onClick={() => select(0)}/><Button variant="secondary" size="icon" className="play-button" aria-label={playing ? 'Pause' : 'Play'} onClick={() => { if (!playing && time >= duration) select(0); setPlaying(p => !p); }}>{playing ? <Pause size={16}/> : <Play size={16}/>}</Button><span className="time-display">{timecode(time)}<span>/ {timecode(duration)}</span></span></div><span className="live-preview"><span className="live-dot"/>{playing ? 'Playing' : 'Live preview'}</span></div></section>
+        <section className="preview-area"><div className="preview-heading"><div><span className="overline">CANVAS</span><span className="canvas-ratio">{ratio}<span>·</span>{project.format === 'portrait' ? '1080 × 1920' : '1920 × 1080'}</span></div><div className="preview-tools"><select aria-label="Canvas zoom" value={zoom} onChange={e => setZoom(e.target.value)}><option>Fit</option><option>80%</option><option>60%</option></select><Button variant={loop ? 'secondary' : 'ghost'} size="sm" style={{ height: 26, fontSize: 11, gap: 4, padding: '0 8px', color: loop ? 'var(--blue)' : undefined }} title={loop ? 'TV Loop: Active (Infinite repeat)' : 'TV Loop: Inactive'} onClick={() => { setLoop(l => !l); setNotice(!loop ? 'TV Loop active — plays continuously' : 'Loop disabled'); }}><Repeat size={13}/><span>Loop</span></Button><IconButton icon={Tv} label="TV Showcase Mode (Fullscreen Kiosk)" onClick={() => { setLoop(true); if (!playing) setPlaying(true); void stage.current?.requestFullscreen?.(); setNotice('TV Showcase Mode active — infinite loop playing'); }}/><IconButton icon={Expand} label="Full screen canvas" onClick={() => void stage.current?.requestFullscreen?.()}/></div></div><div className={`canvas-workspace ${project.format === 'landscape' ? 'canvas-landscape' : ''}`}><div className={`video-stage zoom-${zoom === 'Fit' ? 'fit' : zoom.replace('%','')}`} ref={stage}><ScenePreview key={scene.id} project={project} scene={scene} elapsed={sceneElapsed} playing={playing} safeZones={safeZones}/>{loop && <div className="tv-kiosk-badge" aria-hidden="true"><Tv size={12}/><span>TV LOOP</span><span>{String(selected+1).padStart(2,'0')} / {String(project.scenes.length).padStart(2,'0')}</span></div>}</div><span className="canvas-scene-label">SCENE {String(selected+1).padStart(2,'0')}<span>/ {String(project.scenes.length).padStart(2,'0')}</span></span></div><div className="playback-bar"><div className="playback-left"><IconButton icon={muted ? VolumeX : Volume2} label="Toggle audio" onClick={() => setMuted(m => !m)}/><span className="preview-quality">HD</span></div><div className="playback-center"><IconButton icon={SkipBack} label="Restart playback" onClick={() => select(0)}/><Button variant="secondary" size="icon" className="play-button" aria-label={playing ? 'Pause' : 'Play'} onClick={() => { if (!playing && time >= duration) select(0); setPlaying(p => !p); }}>{playing ? <Pause size={16}/> : <Play size={16}/>}</Button><IconButton icon={Repeat} label={loop ? 'Continuous loop: ON (TV mode)' : 'Continuous loop: OFF'} onClick={() => { setLoop(l => !l); setNotice(!loop ? 'Continuous TV loop enabled' : 'Loop disabled'); }}/><span className="time-display">{timecode(time)}<span>/ {timecode(duration)}</span></span>{loop && <span className="preview-quality" style={{ color: 'var(--blue)', borderColor: 'var(--blue)', fontSize: 8, fontWeight: 700 }}>LOOP</span>}</div><span className="live-preview"><span className="live-dot"/>{playing ? 'Playing' : 'Live preview'}</span></div></section>
         <aside className="inspector"><div className="section-heading"><div><SlidersHorizontal size={16}/><h2>Scene properties</h2></div><IconButton icon={MoreHorizontal} label="Duplicate selected scene" onClick={duplicate}/></div><div className="inspector-tabs">{['Content','Layers','Typography','Motion'].map(t => <Button variant="ghost" key={t} className={inspector === t ? 'tab-active' : ''} onClick={() => setInspector(t)}>{t}</Button>)}</div><div className="inspector-content">
           <Field label="Scene name"><input aria-label="Scene name" dir="auto" value={scene.title} onChange={e => edit({ title: e.target.value })}/></Field><div className="field-row"><Field label="Scene type"><select value={phaseOf(scene)} onChange={e => edit({ phase: e.target.value })}>{phaseNames.map(p => <option key={p}>{p}</option>)}</select></Field><Field label="Duration"><div className="suffix-input"><input aria-label="Duration" type="number" min=".1" max="600" step=".1" value={scene.duration} onChange={e => { const n = Number(e.target.value); if (n >= .1 && n <= 600) edit({ duration: n }); }}/><span>sec</span></div></Field></div>
           {inspector === 'Content' && <><div className="field-section"><Field label="On-screen text" extra="Text layer"><textarea aria-label="On-screen text" dir="auto" rows={3} value={scene.body} onChange={e => edit({ body: e.target.value })}/></Field><div className="text-tools"><span><b>T</b>{scene.fontFamily ?? 'Space Grotesk'}</span><Button variant="ghost" size="sm" onClick={() => setInspector('Typography')}>{scene.fontSize ?? 42} px · {scene.textAlign ?? 'center'}<ChevronDown size={12}/></Button></div></div><div className="field-section"><Field label="Math expression" extra={<i className="math-tag">ƒx</i>}><input aria-label="Math expression" className="formula-input" value={scene.expression ?? project.expression} onChange={e => edit({ expression: e.target.value })}/></Field>{formulaValidation.error ? <small style={{ color: 'var(--coral)', fontSize: 9, display: 'block', marginTop: 4 }}>⚠️ {formulaValidation.error}</small> : <small style={{ color: 'var(--primary)', fontSize: 9, display: 'block', marginTop: 4 }}>✓ Valid formula (f(1) = {formulaValidation.value})</small>}</div><div className="field-section"><Field label="Visual model"><select value={scene.visual ?? 'curve'} onChange={e => { const visual = e.target.value as NonNullable<Scene['visual']>; edit({ visual }); }}><option value="curve">Function curve f(x) = x²</option><option value="tangent">Tangent & slope f'(x)</option><option value="wave">Trigonometric wave sin(x)</option><option value="exponential">Exponential curve eˣ</option><option value="integral">Definite integral ∫ f(x)dx</option><option value="number-line">Number line & bracket</option><option value="none">Text only</option></select></Field><div className="model-miniature"><svg viewBox="0 0 240 65" aria-hidden="true"><path d="M25 50H220M115 8V58" className="art-axis"/><path d="M58 12Q118 85 178 12" fill="none" className="art-curve"/></svg><span>{scene.visual === 'wave' ? 'sin(x)' : scene.visual === 'exponential' ? 'eˣ' : scene.visual === 'integral' ? '∫ f(x)dx' : scene.visual === 'tangent' ? "f'(x)" : scene.visual === 'number-line' ? '[a, b]' : 'f(x) = x²'}</span></div></div><div className="field-section"><Field label="Voice-over script" extra={<AudioLines size={14}/>}><textarea rows={3} value={scene.narration ?? scene.body} onChange={e => edit({ narration: e.target.value })}/></Field><Button variant="ghost" className="voice-button" size="sm" onClick={() => { if (!('speechSynthesis' in window)) { setNotice('Speech playback is unavailable.'); return; } speechSynthesis.cancel(); const text = scene.narration ?? scene.body; const u = new SpeechSynthesisUtterance(text); u.lang = /[\u0600-\u06ff]/.test(text) ? 'ar' : 'en-US'; speechSynthesis.speak(u); }}><Play size={12}/>Listen to script</Button></div></>}
@@ -442,6 +447,40 @@ function Studio() {
         </div>
       </div>}
       {panel === 'templates' && <div className="template-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+        <Button variant="outline" className="template-card" style={{ gridColumn: 'span 2', borderColor: 'var(--blue)', background: 'rgba(56, 189, 248, 0.05)', padding: 14 }} onClick={() => {
+          load(tvMarketingLoopProject);
+          persistProject(tvMarketingLoopProject);
+          setLoop(true);
+          setNotice('Loaded TV Marketing Loop showcase (16:9 Widescreen)');
+          setPanel(null);
+        }}>
+          <div className="template-art" style={{ width: 140, flexShrink: 0 }}>
+            <svg viewBox="0 0 160 90">
+              <rect x="8" y="8" width="144" height="74" rx="6" fill="#0b121e" stroke="var(--blue)" strokeWidth="1.5"/>
+              <path d="M18 55Q80 15 142 55" fill="none" stroke="var(--blue)" strokeWidth="2"/>
+              <line x1="45" y1="30" x2="115" y2="70" stroke="var(--gold)" strokeWidth="1.5" strokeDasharray="3 2"/>
+              <circle cx="80" cy="40" r="4" fill="#fff"/>
+              <rect x="110" y="16" width="34" height="13" rx="2" fill="var(--blue)" opacity="0.2"/>
+              <text x="127" y="25" textAnchor="middle" fontSize="7" fill="var(--blue)" fontWeight="700">16:9 TV</text>
+            </svg>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, textAlign: 'start' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <strong dir="auto" style={{ fontSize: 13 }}>عرض الشاشات الترويجي الشامل (TV Marketing Loop)</strong>
+              <span style={{ fontSize: 9, background: 'var(--blue)', color: '#000', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>16:9 TV LOOP</span>
+            </div>
+            <small style={{ fontSize: 10, color: 'var(--muted-foreground)', lineHeight: 1.5 }} dir="auto">
+              فيديو تسويقي متكامل للشاشات التلفزيونية في المعارض ومراكز التعليم. يجمع بين استقطاب الأولياء (التفوق والتحصين من فخاخ BEM و BAC) وإلهام التلاميذ (الفهم البصري والمتعة الرياضية)، مع رمز QR تفاعلي وتكرار مستمر.
+            </small>
+            <div style={{ display: 'flex', gap: 6, marginTop: 2, fontSize: 9, color: 'var(--blue)' }}>
+              <span>10 مشاهد (79 ثانية)</span>
+              <span>•</span>
+              <span>16:9 Widescreen TV</span>
+              <span>•</span>
+              <span>تكرار لانهائي تلقائي</span>
+            </div>
+          </div>
+        </Button>
         <Button variant="outline" className="template-card" onClick={() => {
           load(threeBlueOneBrownProject);
           persistProject(threeBlueOneBrownProject);

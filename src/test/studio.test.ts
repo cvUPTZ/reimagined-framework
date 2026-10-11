@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultProject, duplicateScene, moveScene, totalDuration } from "@/lib/studio";
+import { tvMarketingLoopProject } from "@/lib/reference-project";
+import { parseProjectFile, projectFile } from "@/lib/project-file";
 
 describe("studio project rules", () => {
   it("calculates the concrete demo duration", () => {
@@ -17,5 +19,27 @@ describe("studio project rules", () => {
     expect(duplicated).toHaveLength(6);
     expect(duplicated[2]?.body).toBe(defaultProject.scenes[1]?.body);
     expect(duplicated[2]?.id).not.toBe(defaultProject.scenes[1]?.id);
+  });
+
+  it("validates TV Marketing Loop project structure and round-tripping", () => {
+    expect(tvMarketingLoopProject.format).toBe("landscape");
+    expect(tvMarketingLoopProject.scenes).toHaveLength(10);
+    expect(totalDuration(tvMarketingLoopProject.scenes)).toBe(79);
+    
+    // Addresses both parents and students
+    const bodies = tvMarketingLoopProject.scenes.map(s => s.body).join(' ');
+    const titles = tvMarketingLoopProject.scenes.map(s => s.title).join(' ');
+    expect(titles).toContain('الأولياء');
+    expect(titles).toContain('التلميذ');
+    
+    // Contains QR code call to action
+    const qrScene = tvMarketingLoopProject.scenes.find(s => s.showQrCta === true);
+    expect(qrScene).toBeDefined();
+    expect(qrScene?.id).toBe('tv-09-qr');
+
+    // Round-trips through project file format without warnings or errors
+    const parsed = parseProjectFile(projectFile(tvMarketingLoopProject));
+    expect(parsed.project.scenes).toHaveLength(10);
+    expect(parsed.project.format).toBe("landscape");
   });
 });
