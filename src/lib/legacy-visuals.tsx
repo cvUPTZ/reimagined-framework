@@ -266,7 +266,7 @@ const venn: Model = ({ kit, a, b, c, st, p, pulse }) => {
   if (g > 0) {
     kit.els.push(
       <clipPath key="vc" id="venn-clip"><circle cx={ax} cy={vy} r={r} /></clipPath>,
-      <circle key="vi" cx={bx} cy={vy} r={r} clipPath="url(#venn-clip)" fill={ink(RD, ${g * (0.4 + 0.3 * pulse)})} />,
+      <circle key="vi" cx={bx} cy={vy} r={r} clipPath="url(#venn-clip)" fill={ink(RD, g * (0.4 + 0.3 * pulse))} />,
     );
   }
   kit.tx('A', ax - r * 0.55, vy, 24, WH, 0.9); kit.tx('B', bx + r * 0.55, vy, 24, WH, 0.9);
