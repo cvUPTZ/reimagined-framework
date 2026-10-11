@@ -1,5 +1,5 @@
 # Reference direction rebuild
-- [ ] Switch all math artwork to the second reference: open diagrams, bounded geometry, readable annotations and staged reveals; verify library scenes and downloads.
+- [x] Switch shared math artwork to the second reference: open diagrams, bounded geometry, readable annotations and staged reveals; verify editable models, library tangent scenes and a downloaded frame.
 - [x] Replace the workspace layout and styling with the supplied QED reference.
 - [x] Preserve project editing, scene controls, playback, import/export, and undo/redo.
 - [x] Verify the editor visually and exercise editing end to end.

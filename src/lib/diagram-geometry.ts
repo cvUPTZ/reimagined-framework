@@ -24,3 +24,19 @@ export function diagramReveal(elapsed: number, duration: number, delay = 0): num
   const u = Math.max(0, Math.min(1, (elapsed / Math.max(0.5, duration) - delay) / 0.28));
   return u * u * (3 - 2 * u);
 }
+
+/** Split discontinuities and clip each segment without closing a mathematical curve. */
+export function openDiagramPath(points: ReadonlyArray<DiagramPoint | null>, bounds = DIAGRAM_BOUNDS): string {
+  const commands: string[] = [];
+  let previous: DiagramPoint | undefined;
+  for (let i = 1; i < points.length; i++) {
+    const start = points[i - 1], end = points[i];
+    const segment = start && end ? clipDiagramLine(start, end, bounds) : null;
+    if (!segment) { previous = undefined; continue; }
+    const [from, to] = segment;
+    if (!previous || Math.abs(previous[0] - from[0]) > 0.01 || Math.abs(previous[1] - from[1]) > 0.01) commands.push(`M ${from.join(' ')}`);
+    commands.push(`L ${to.join(' ')}`);
+    previous = to;
+  }
+  return commands.join(' ');
+}

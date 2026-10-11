@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { clipDiagramLine, diagramReveal, DIAGRAM_BOUNDS } from './diagram-geometry';
+import { clipDiagramLine, diagramReveal, openDiagramPath } from './diagram-geometry';
 
 /**
  * SVG ports of the original canvas "visual intuition" models (js/04-visual-intuition.js).
@@ -102,7 +102,7 @@ function makeKit(al: number, reveal = 1): Kit {
         <text
           key={n++}
           x={Math.max(42, Math.min(348, x))}
-          y={Math.max(50, Math.min(320, y))}
+          y={Math.max(64, Math.min(312, y))}
           fontSize={Math.max(14, size)}
           fontWeight={600}
           fontFamily="Tajawal, Cairo, sans-serif"
@@ -120,19 +120,7 @@ function makeKit(al: number, reveal = 1): Kit {
     },
     poly: (pts, c0, fa, sa, lw = 2) => {
       if (!fa && pts.length > 3) {
-        const segments: string[] = [];
-        let previous: [number, number] | undefined;
-        for (let i = 1; i < pts.length; i++) {
-          const start = pts[i - 1], end = pts[i];
-          if (!start || !end) continue;
-          const segment = clipDiagramLine(start, end);
-          if (!segment) { previous = undefined; continue; }
-          const [from, to] = segment;
-          if (!previous || Math.abs(previous[0] - from[0]) > 0.01 || Math.abs(previous[1] - from[1]) > 0.01) segments.push(`M ${from.join(' ')}`);
-          segments.push(`L ${to.join(' ')}`);
-          previous = [to[0], to[1]];
-        }
-        els.push(<path key={n++} d={segments.join(' ')} fill="none" stroke={C(c0, sa)} strokeWidth={lw} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - reveal} className="art-diagram-curve" />);
+        els.push(<path key={n++} d={openDiagramPath(pts)} fill="none" stroke={C(c0, sa)} strokeWidth={lw} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - reveal} className="art-diagram-curve art-glow-line" />);
       } else {
         els.push(<polygon key={n++} points={pts.map(p => p.join(',')).join(' ')} fill={fa ? C(c0, fa) : 'none'} stroke={sa ? C(c0, sa) : 'none'} strokeWidth={lw} strokeLinejoin="round" />);
       }
@@ -266,7 +254,7 @@ const venn: Model = ({ kit, a, b, c, st, p, pulse }) => {
   if (g > 0) {
     kit.els.push(
       <clipPath key="vc" id="venn-clip"><circle cx={ax} cy={vy} r={r} /></clipPath>,
-      <circle key="vi" cx={bx} cy={vy} r={r} clipPath="url(#venn-clip)" fill={ink(RD, ${g * (0.4 + 0.3 * pulse)})} />,
+      <circle key="vi" cx={bx} cy={vy} r={r} clipPath="url(#venn-clip)" fill={ink(RD, g * (0.4 + 0.3 * pulse))} />,
     );
   }
   kit.tx('A', ax - r * 0.55, vy, 24, WH, 0.9); kit.tx('B', bx + r * 0.55, vy, 24, WH, 0.9);
@@ -376,7 +364,6 @@ const tangent: Model = ({ kit, a, st, p, u }) => {
     kit.ln(X(right), Y(f(x0)), X(right), Y(f(x0) + rise), AM, annotationQ, 2.5);
     kit.tx('Δx', (X(x0) + X(right)) / 2, Y(f(x0)) + 24, 14, TE, annotationQ);
     kit.tx('Δy', X(right) + 20, (Y(f(x0)) + Y(f(x0) + rise)) / 2, 14, AM, annotationQ);
-    kit.tx(`f′(${f1(x0)}) = ${f1(df(x0))}`, CX, TOP + 28, 18, AM, annotationQ);
   }
   return {
     readout: st === 'predict' ? `الميل عند x=${f1(x0)} ؟` : st === 'move' ? `h = ${f1(h)}  ⇒  ميل ≈ ${f1(slope)}` : `f′(${f1(x0)}) = ${f1(df(x0))}`,
@@ -631,7 +618,7 @@ const waveModel: Model = ({ kit, st, p, pulse }) => {
   const pts: Array<[number, number]> = [];
   const tMax = st === 'predict' ? 0.001 : theta;
   for (let i = 0; i <= 60; i++) { const t = tMax * i / 60; pts.push([XW(t), wy - r * Math.sin(t)]); }
-  if (pts.length > 1) kit.poly(pts, TE, 0, 0.95, 3);
+  if (pts.length > 1) kit.poly(pts, VI, 0, 0.95, 3);
   // connector from circle point to wave point
   if (st !== 'predict') {
     kit.ln(px, py, XW(theta), wy - r * Math.sin(theta), WH, 0.35 + 0.2 * pulse, 1.2);

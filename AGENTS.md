@@ -14,6 +14,7 @@
 - Reference demo scenes live separately from the original project defaults; optional scene presentation fields preserve existing saved project compatibility.
 - Render scene artwork through the shared ScenePreview component so sidebar thumbnails and the main canvas always display the same project content.
 - Keep diagram clipping and open-curve construction in shared pure geometry helpers so library artwork cannot escape its drawing area or accidentally close curves.
+- Render editable mathematical expressions through OpenMathDiagram with scene-local reveals; this keeps non-legacy scenes consistent with library artwork and exports.
 - Version and validate project interchange in a dedicated migration module, retaining legacy payloads so unsupported original effects are not silently lost.
 - Compute motion from scene-local time and export the shared ScenePreview artwork through browser canvas and WebCodecs so scrubbing and downloads use the same scene definition.
 - Derive clip geometry and edits through pure timeline helpers; duration-proportional coordinates keep ruler, playhead, trimming, and export synchronized.
