@@ -17,7 +17,7 @@ const cases: Array<[string, string, VisualStage]> = [
 it('dumps new model SVGs for visual review', () => {
   for (const [name, model, stage] of cases) {
     const node = renderLegacyVisual({ model, stage, elapsed: 3, duration: 6, params: { a: 2, b: 1, c: 3 } });
-    const svg = renderToStaticMarkup(createElement('svg', { viewBox: '0 0 390 440', width: 390, height: 440, style: 'background:#0b0f16' }, node));
+    const svg = renderToStaticMarkup(createElement('svg', { viewBox: '0 0 390 440', width: 390, height: 440, style: { background: '#0b0f16' } }, node));
     writeFileSync(`/tmp/browser/visuals/screenshots/r_${name}.svg`, svg);
   }
 });
