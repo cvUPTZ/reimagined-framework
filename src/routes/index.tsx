@@ -1,11 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { AudioLines, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clapperboard, Copy, Download, Expand, Eye, EyeOff, FilePlus, Film, FolderOpen, History, Layers, LayoutTemplate, Mic, MicOff, MoreHorizontal, Palette, Pause, Play, Plus, Redo2, RotateCcw, Search, Settings2, ShieldCheck, SkipBack, SlidersHorizontal, Sparkles, Trash2, Type, Undo2, Upload, Volume2, VolumeX, X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { AudioLines, BookOpen, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clapperboard, Copy, Download, Expand, Eye, EyeOff, FilePlus, Film, FolderOpen, History, Layers, LayoutTemplate, Mic, MicOff, MoreHorizontal, Palette, Pause, Play, Plus, Redo2, RotateCcw, Search, Settings2, ShieldCheck, SkipBack, SlidersHorizontal, Sparkles, Trash2, Type, Undo2, Upload, Volume2, VolumeX, X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScenePreview } from '@/components/studio/scene-preview';
 import { ExportPanel } from '@/components/studio/export-panel';
 import { TimelineEditor } from '@/components/studio/timeline-editor';
+import { CurriculumPlanner } from '@/components/studio/curriculum-planner';
 import { sceneStart, trimScene } from '@/lib/timeline';
 import { parseProjectFile, projectFile, sceneAtTime } from '@/lib/project-file';
 import { buildScenes, defaultBrandKits, duplicateScene, moveScene, totalDuration, type Scene, type StudioProject } from '@/lib/studio';
@@ -25,7 +26,7 @@ export const Route = createFileRoute('/')({
     { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary_large_image' },
   ] }), component: Studio,
 });
-type Panel = 'projects' | 'templates' | 'library' | 'audio' | 'settings' | 'export' | null;
+type Panel = 'projects' | 'templates' | 'library' | 'planner' | 'audio' | 'settings' | 'export' | null;
 function IconButton({ icon: Icon, label, onClick, disabled }: { icon: ComponentType<{ size?: number }>; label: string; onClick: () => void; disabled?: boolean }) { return <Button variant="ghost" size="icon" title={label} aria-label={label} onClick={onClick} disabled={disabled}><Icon size={16}/></Button>; }
 function Field({ label, children, extra }: { label: string; children: ReactNode; extra?: ReactNode }) { return <label className="field"><span className="field-label">{label}<span>{extra}</span></span>{children}</label>; }
 
@@ -190,7 +191,7 @@ function Studio() {
   const sceneElapsed = Math.max(0, time - project.scenes.slice(0, selected).reduce((sum, s) => sum + s.duration, 0));
   const ratio = project.format === 'portrait' ? '9:16' : '16:9';
   return <div className="studio-shell" dir="ltr">
-    <aside className="navigation-rail"><div className="rail-logo">q<span>∎</span></div><nav className="rail-links" aria-label="Studio navigation">{([{ id: null, icon: Clapperboard, label: 'Editor' }, { id: 'projects', icon: FolderOpen, label: 'Projects' }, { id: 'templates', icon: LayoutTemplate, label: 'Templates' }, { id: 'library', icon: BookOpen, label: 'Library' }, { id: 'audio', icon: AudioLines, label: 'Audio' }] as const).map(n => <Button key={n.label} variant="ghost" className={`rail-item ${panel === n.id ? 'rail-active' : ''}`} onClick={() => setPanel(n.id)} title={n.label}><n.icon size={20}/><span>{n.label}</span></Button>)}</nav><div className="rail-bottom"><IconButton icon={Settings2} label="Studio settings" onClick={() => setPanel('settings')}/><IconButton icon={CircleHelp} label="Help" onClick={() => setNotice('Your project is saved in this browser. Use Export to download a copy.')}/><span className="user-avatar">AZ</span></div></aside>
+    <aside className="navigation-rail"><div className="rail-logo">q<span>∎</span></div><nav className="rail-links" aria-label="Studio navigation">{([{ id: null, icon: Clapperboard, label: 'Editor' }, { id: 'planner', icon: Calendar, label: 'Planner' }, { id: 'projects', icon: FolderOpen, label: 'Projects' }, { id: 'templates', icon: LayoutTemplate, label: 'Templates' }, { id: 'library', icon: BookOpen, label: 'Library' }, { id: 'audio', icon: AudioLines, label: 'Audio' }] as const).map(n => <Button key={n.label} variant="ghost" className={`rail-item ${panel === n.id ? 'rail-active' : ''}`} onClick={() => setPanel(n.id)} title={n.label}><n.icon size={20}/><span>{n.label}</span></Button>)}</nav><div className="rail-bottom"><IconButton icon={Settings2} label="Studio settings" onClick={() => setPanel('settings')}/><IconButton icon={CircleHelp} label="Help" onClick={() => setNotice('Your project is saved in this browser. Use Export to download a copy.')}/><span className="user-avatar">AZ</span></div></aside>
     <div className="studio-main">
       <header className="topbar"><div className="wordmark">QED<span>∎</span><i/><small>STUDIO</small></div><div className="project-title"><span className="breadcrumb">Workspace<ChevronRight size={12}/></span><input aria-label="Project name" value={project.name} onChange={e => commit({ ...project, name: e.target.value })}/><IconButton icon={ChevronDown} label="Your projects" onClick={() => setPanel('projects')}/></div><div className="header-actions"><span className="save-state"><Check size={13}/>{saved ? 'All changes saved' : 'Saving changes…'}</span><IconButton icon={FolderOpen} label="Open project" onClick={() => file.current?.click()}/><Button variant="outline" size="sm" onClick={() => { if (time >= duration) select(0); setPlaying(true); void stage.current?.requestFullscreen?.(); }}><Play size={14}/>Preview</Button><Button size="sm" onClick={() => setPanel('export')}><Download size={14}/>Export<ChevronDown size={12}/></Button></div></header>
       <div className="workspace-toolbar"><div className="workspace-heading"><span className="live-dot"/><strong>Video editor</strong><span className="toolbar-divider"/><small>{project.scenes.length} scenes · {timecode(duration)}</small></div><div className="toolbar-actions"><IconButton icon={Undo2} label="Undo" onClick={undo} disabled={!history.length}/><IconButton icon={Redo2} label="Redo" onClick={redo} disabled={!future.length}/><span className="toolbar-divider"/><Button variant="ghost" size="sm" onClick={() => setPanel('templates')}><Sparkles size={16}/>Templates</Button><IconButton icon={MoreHorizontal} label="Workspace settings" onClick={() => setPanel('settings')}/></div></div>
@@ -256,7 +257,19 @@ function Studio() {
       <footer className="statusbar"><span><span className="live-dot"/>QED Studio<i>v5.0</i></span><span>{project.scenes.length} scenes · {ratio} · 30 fps</span><span>Made for moments of understanding. ∎</span></footer>
     </div>
     <input ref={file} type="file" accept=".json,.cmb.json,.qed.json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void importFile(f); e.target.value = ''; }}/>{audioUrl && <audio ref={audio} src={audioUrl}/>}
-    <Dialog open={panel !== null} onOpenChange={open => { if (!open) setPanel(null); }}><DialogContent className="studio-modal"><span className="overline">QED STUDIO</span><DialogTitle>{panel ? { projects: 'Your projects', templates: 'Start with a story', library: 'Story & lesson', audio: 'Audio studio', settings: 'Studio settings', export: 'Ready for the world' }[panel] : ''}</DialogTitle><DialogDescription className="sr-only">{panel} options</DialogDescription>
+    <Dialog open={panel !== null} onOpenChange={open => { if (!open) setPanel(null); }}><DialogContent className="studio-modal"><span className="overline">QED STUDIO</span><DialogTitle>{panel ? { planner: 'مخطط المحتوى التعليمي والدروس (Curriculum Planner)', projects: 'Your projects', templates: 'Start with a story', library: 'Story & lesson', audio: 'Audio studio', settings: 'Studio settings', export: 'Ready for the world' }[panel] : ''}</DialogTitle><DialogDescription className="sr-only">{panel} options</DialogDescription>
+      {panel === 'planner' && (
+        <div className="modal-content">
+          <CurriculumPlanner
+            onLoadProject={p => {
+              load(p);
+              persistProject(p);
+              setPanel(null);
+            }}
+            onNotify={msg => setNotice(msg)}
+          />
+        </div>
+      )}
       {panel === 'projects' && <div className="modal-content">
         <div className="library-search">
           <div style={{ position: 'relative' }}>
