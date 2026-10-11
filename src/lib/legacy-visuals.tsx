@@ -667,6 +667,16 @@ export const LEGACY_RENDERERS: Record<string, Model> = {
   riemann, ftc: riemann, signarea: riemann, revolve: riemann, volume: riemann,
   numline, off: numline, num: numline, gap: numline, bounds: numline,
   disc, sqrt: sqrtModel, diffsq, thales, inscr: thales,
+  // Curves, limits & variation
+  curve: curveModel, limit: curveModel, asym: curveModel, variation: curveModel, convex: curveModel,
+  quad: curveModel, func: curveModel, ivt: curveModel, squeeze: curveModel, dist: curveModel,
+  geo: curveModel, triangle: curveModel,
+  inverse: inverseModel, linear: linearModel, system: systemModel,
+  // Trig, waves & complex numbers
+  wave: waveModel, trig: waveModel, sinx: waveModel, clock: waveModel, crot: waveModel,
+  carg: waveModel, cplx: waveModel,
+  // Exponentials, growth & logarithms
+  exponential: expModel, expk: expModel, growth: expModel, powers: expModel, logadd: logModel,
 };
 
 export const hasLegacyRenderer = (model: string) => model in LEGACY_RENDERERS;
