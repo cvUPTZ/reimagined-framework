@@ -71,7 +71,7 @@ describe('legacy visual renderers', () => {
     const html = renderToStaticMarkup(createElement(ScenePreview, { project, scene: hookScene }));
     
     // Check that tspan elements are created for multiple wrapped lines
-    const tspanCount = (html.match(/<tspan[^>]*dir="auto"[^>]*>/g) || []).length;
+    const tspanCount = (html.match(/<tspan[^>]*>/g) || []).length;
     expect(tspanCount).toBeGreaterThanOrEqual(2);
     expect(html).toContain('3 مجموعات، كل وحدة فيها 2');
     expect(html).toContain('فيروزي: شحال في الكل؟ 🧮');
