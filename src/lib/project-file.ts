@@ -82,7 +82,7 @@ export function parseProjectFile(input: unknown): { project: StudioProject; warn
     mistake: parsed.mistake, expression: parsed.expression, remediation: parsed.remediation, cta: parsed.cta,
     ...(parsed.legacy === undefined ? {} : { legacy: parsed.legacy }),
     ...(parsed.mediaName === undefined ? {} : { mediaName: parsed.mediaName }),
-    ...(parsed.brandKit === undefined ? {} : { brandKit: parsed.brandKit }),
+    ...(parsed.brandKit === undefined ? {} : { brandKit: { name: parsed.brandKit.name, brandName: parsed.brandKit.brandName, tagline: parsed.brandKit.tagline, footnote: parsed.brandKit.footnote, accentColor: parsed.brandKit.accentColor, ...(parsed.brandKit.logoStyle === undefined ? {} : { logoStyle: parsed.brandKit.logoStyle }) } }),
     ...(parsed.audioTrack === undefined ? {} : { audioTrack: parsed.audioTrack }),
     ...(parsed.updatedAt === undefined ? {} : { updatedAt: parsed.updatedAt }),
     scenes: parsed.scenes.map(s => ({
