@@ -55,4 +55,34 @@ describe('legacy library (restored from Cinematic Math Builder v3)', () => {
     expect(mapLegacyModel('tangent')).toBe('tangent');
     expect(mapLegacyModel('__unknown__')).toBe('none');
   });
+
+  it('matches PGCD topics to Euclid gcd visual model and extracts challenge parameters', () => {
+    const pgcdEntry = listLegacy('intuition').find(x => x.topic === 'PGCD بخوارزمية إقليدس')!;
+    const project = legacyToProject(pgcdEntry)!;
+    const challengeScene = project.scenes.find(s => s.phase === 'Challenge' && s.title === 'تحدّي');
+    expect(challengeScene).toBeDefined();
+    expect(challengeScene?.legacy?.['visualModel']).toBe('gcd');
+    expect(challengeScene?.visual).not.toBe('curve');
+    const params = challengeScene?.legacy?.['visualParams'] as { a: number; b: number } | undefined;
+    expect(params?.a).toBe(30);
+    expect(params?.b).toBe(18);
+  });
+
+  it('infers topic-appropriate visual models for mistakes without raw vis metadata', () => {
+    // 2AM Fractions mistake
+    const fracEntry = listLegacy('mistake').find(x => x.chapter.includes('الكسور'))!;
+    const fracProject = legacyToProject(fracEntry)!;
+    expect(fracProject.scenes[0]!.legacy?.['visualModel']).toBe('fraction');
+    expect(fracProject.scenes[0]!.visual).not.toBe('curve');
+
+    // 4AM Roots mistake
+    const rootEntry = listLegacy('mistake').find(x => x.chapter.includes('الجذور'))!;
+    const rootProject = legacyToProject(rootEntry)!;
+    expect(rootProject.scenes[0]!.legacy?.['visualModel']).toBe('sqrt');
+
+    // 4AM Literal arithmetic mistake
+    const algebraEntry = listLegacy('mistake').find(x => x.chapter.includes('الحساب الحرفي'))!;
+    const algebraProject = legacyToProject(algebraEntry)!;
+    expect(algebraProject.scenes[0]!.legacy?.['visualModel']).toBe('area');
+  });
 });

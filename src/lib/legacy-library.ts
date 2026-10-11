@@ -149,7 +149,8 @@ const MODEL_MAP: Record<string, VisualModelType> = {
   seq: 'number-line', sieve: 'number-line', off: 'number-line', pct: 'number-line',
   domino: 'number-line', binom: 'number-line', parity: 'number-line', pascal: 'number-line',
   mean: 'number-line', prob: 'number-line', cond: 'number-line', tree: 'number-line',
-  num: 'number-line',
+  num: 'number-line', gcd: 'number-line', fraction: 'number-line', balance: 'number-line',
+  groups: 'number-line', venn: 'number-line',
   
   // Geometry & Triangles
   thales: 'tangent', dist: 'curve', geo: 'curve', triangle: 'curve', euclid: 'number-line',
@@ -167,11 +168,11 @@ export function unsupportedLegacyModels(): string[] {
 
 /* ---------------------------------------------------------------- scene building */
 
-const secondsFor = (text: string, min = 3, max = 9) => Math.max(min, Math.min(max, Math.round((text.length / 14 + 1.5) * 2) / 2));
+const secondsFor = (text: string, min = 3, max = 9) => Math.max(min, Math.round((text.length / 14 + 1.5) * 2) / 2);
 
 type SceneInit = { title: string; body: string; kind: Scene['kind']; phase: string; model?: string; params?: LegacyVisual | undefined; stage?: VisualStage; narration?: string; expression?: string; legacy?: Record<string, unknown>; animation?: Scene['animation'] };
 
-function buildScenes(inits: SceneInit[], fallbackVisual: VisualModelType = 'curve'): Scene[] {
+function buildScenes(inits: SceneInit[], fallbackVisual: VisualModelType = 'none'): Scene[] {
   return inits.map((s, n) => {
     const visual = s.model ? mapLegacyModel(s.model) : fallbackVisual;
     const scene: Scene = {
@@ -214,25 +215,122 @@ function projectFrom(entry: LegacyEntry, scenes: Scene[], extra: Partial<StudioP
   };
 }
 
-function inferVisualFromMath(raw: string): VisualModelType {
-  if (!raw) return 'curve';
-  if (/e\^|exp\(/i.test(raw)) return 'exponential';
-  if (/sin|cos|tan/i.test(raw)) return 'wave';
-  if (/∫|integral|مساحة/i.test(raw)) return 'integral';
-  if (/f'|مشتق|مماس|tangent/i.test(raw)) return 'tangent';
-  return 'curve';
+function inferVisualFromEntry(b: LegacyMistake): string {
+  if (b.vis?.m && b.vis.m !== 'off') return b.vis.m;
+  const text = (b.level || '') + ' ' + (b.chapter || '') + ' ' + (b.topic || '') + ' ' + (b.mistake || '') + ' ' + (b.expr || '') + ' ' + (b.cause || '') + ' ' + (b.fix || '');
+  
+  // 1. Geometry, Triangles & Angles
+  if (/طالس|فيثاغورس|مثلث|دائرة|زاوية|وتر|تشابه|geo|triangle|pythag|thales/i.test(text)) return 'thales';
+  
+  // 2. Arithmetic, Division, PGCD, Primes, Modular arithmetic
+  if (/pgcd|قاسم|قواسم|إقليدس|أوليان|أولية|موافقات|تعداد|بواقي|غوص|بيزو|gcd|sieve/i.test(text)) return 'gcd';
+  
+  // 3. Fractions
+  if (/كسر|كسور|مقام|بسط|توحيد|fraction/i.test(text) || /\d+÷\d+\+\d+÷\d+/.test(b.expr || '')) return 'fraction';
+  
+  // 4. Roots
+  if (/جذر|جذور|√|sqrt/i.test(text)) return 'sqrt';
+  
+  // 5. Algebraic expansion, Identities, Factoring
+  if (/متطابق|نشر|تحليل|مربع مجموع|مربع فرق|جداء مجموعين|عامل مشترك|\(a\+b\)/i.test(text)) return 'area';
+  
+  // 6. Order of operations, Brackets
+  if (/أولويات|أقواس|أسبقية|رتبة|operations|groups/i.test(text)) return 'groups';
+  
+  // 7. Equations, Inequalities, Balance
+  if (/ميزان|معادلة|معادلات|متراجح|مجهول|طرفي/i.test(text)) return 'balance';
+  
+  // 8. Number line, Negative numbers, Intervals, Order
+  if (/أعداد نسبية|سالب|مجال|مجالات|حصر|قيمة مطلقة|ترتيب|numline|sign/i.test(text)) return 'numline';
+  
+  // 9. Sequences
+  if (/متتالي|تراجع|حدود متتابعة|حسابية|هندسية|stair|seq/i.test(text)) return 'stair';
+  
+  // 10. Probability & Counting
+  if (/احتمال|عد|توفيقة|ترتيبة|تبديلة|شجرة|venn|دستور ثنائي الحد/i.test(text)) return 'venn';
+  
+  // 11. Complex numbers & Trigonometry
+  if (/مركب|مركبة|عمدة|طويلة|مرافق|مثلثات|جيب|cos|sin|tan|cplx|arg/i.test(text)) return 'wave';
+  
+  // 12. Exponentials & Logarithms & Powers
+  if (/أسية|قوى|أس|exp|e\^/i.test(text)) return 'exponential';
+  if (/لوغاريتم|ln|log/i.test(text)) return 'logadd';
+  
+  // 13. Calculus: Integrals & Primitives
+  if (/تكامل|أصلية|مساحة تحت|ريمان|riemann|integral/i.test(text)) return 'riemann';
+  
+  // 14. Calculus: Derivatives & Tangents
+  if (/مشتق|اشتقاق|مماس|ميل|tangent|تآلفي/i.test(text)) return 'tangent';
+  
+  // 15. Functions, Limits, Asymptotes
+  if (/نهاية|نهايات|مستقيم مقارب|استمرار|تزايد مقارن|مبرهنة القيم المتوسطة|تغيرات|دالة|منحنى/i.test(text)) return 'curve';
+  
+  return 'none';
+}
+
+function parseChallengeParams(text: string, baseModel: string): LegacyVisual | undefined {
+  if (!text) return undefined;
+  const nums = text.match(/\d+(?:\.\d+)?/g);
+  if (!nums || nums.length < 2) return undefined;
+  if (baseModel === 'fraction' && nums.length >= 4) {
+    return { m: baseModel, a: Number(nums[0]), b: Number(nums[1]), c: Number(nums[2]), d: Number(nums[3]) };
+  }
+  return { m: baseModel, a: Number(nums[0]), b: Number(nums[1]) };
+}
+
+function inferParamsForMistake(b: LegacyMistake, model: string): LegacyVisual {
+  if (b.vis && Object.keys(b.vis).length > 1) return b.vis;
+  const combined = (b.expr || '') + ' ' + (b.mistake || '') + ' ' + (b.cause || '') + ' ' + (b.fix || '');
+  const nums = combined.match(/\d+(?:\.\d+)?/g);
+  if (model === 'gcd') {
+    if (nums && nums.length >= 2) return { m: 'gcd', a: Number(nums[0]), b: Number(nums[1]) };
+    return { m: 'gcd', a: 30, b: 18 };
+  }
+  if (model === 'fraction') {
+    if (nums && nums.length >= 4) return { m: 'fraction', a: Number(nums[0]), b: Number(nums[1]), c: Number(nums[2]), d: Number(nums[3]) };
+    if (nums && nums.length >= 2) return { m: 'fraction', a: Number(nums[0]), b: Number(nums[1]), c: 1, d: 3 };
+    return { m: 'fraction', a: 1, b: 2, c: 1, d: 3 };
+  }
+  if (model === 'area') {
+    if (nums && nums.length >= 2) return { m: 'area', a: Number(nums[0]), b: Number(nums[1]) };
+    return { m: 'area', a: 3, b: 2 };
+  }
+  if (model === 'groups') {
+    if (nums && nums.length >= 3) return { m: 'groups', a: Number(nums[1]), b: Number(nums[2]), c: Number(nums[0]) };
+    return { m: 'groups', a: 2, b: 3, c: 4 };
+  }
+  if (model === 'numline') {
+    if (nums && nums.length >= 2) return { m: 'numline', a: Number(nums[0]), b: Number(nums[1]) };
+    return { m: 'numline', a: -5, b: 3 };
+  }
+  if (model === 'balance') {
+    if (nums && nums.length >= 2) return { m: 'balance', a: 2, b: Number(nums[0]), c: Number(nums[1]) };
+    return { m: 'balance', a: 2, b: 3, c: 7 };
+  }
+  if (model === 'stair') {
+    return { m: 'stair', a: 0.5, b: 3, c: 0 };
+  }
+  if (model === 'venn') {
+    return { m: 'venn', a: 0.6, b: 0.5, c: 0.3 };
+  }
+  if (model === 'tangent') {
+    return { m: 'tangent', a: 1 };
+  }
+  return { m: model };
 }
 
 function mistakeScenes(b: LegacyMistake, hook: string, ch?: [string, string], vis?: LegacyVisual): SceneInit[] {
   const model = vis?.m ?? b.vis?.m;
-  const inferredFallback = inferVisualFromMath((b.expr || '') + ' ' + (b.mistake || '') + ' ' + (b.topic || ''));
+  const effectiveModel = model && model !== 'off' ? model : inferVisualFromEntry(b);
+  const effectiveParams = vis ?? (b.vis && Object.keys(b.vis).length > 1 ? b.vis : effectiveModel !== 'none' ? inferParamsForMistake(b, effectiveModel) : undefined);
+  const hasModel = effectiveModel !== 'none';
   const out: SceneInit[] = [
     {
       title: 'الخطاف',
       body: hook,
       kind: 'hook',
       phase: 'Hook',
-      ...(model ? { model, params: vis ?? b.vis, stage: 'predict' as const } : { model: inferredFallback }),
+      ...(hasModel ? { model: effectiveModel, params: effectiveParams, stage: 'predict' as const } : {}),
       expression: b.mistake,
     },
     {
@@ -240,7 +338,7 @@ function mistakeScenes(b: LegacyMistake, hook: string, ch?: [string, string], vi
       body: `${b.mistake}\n${b.cause || 'فخ شائع يقع فيه الكثير من التلاميذ في البكالوريا'}`,
       kind: 'explain',
       phase: 'Diagnosis',
-      ...(model ? { model, params: vis ?? b.vis, stage: 'observe' as const } : { model: inferredFallback }),
+      ...(hasModel ? { model: effectiveModel, params: effectiveParams, stage: 'observe' as const } : {}),
       expression: b.mistake,
     },
     {
@@ -248,7 +346,7 @@ function mistakeScenes(b: LegacyMistake, hook: string, ch?: [string, string], vi
       body: b.cause,
       kind: 'explain',
       phase: 'Cause',
-      ...(model ? { model, params: vis ?? b.vis, stage: 'move' as const } : { model: inferredFallback }),
+      ...(hasModel ? { model: effectiveModel, params: effectiveParams, stage: 'move' as const } : {}),
       expression: b.expr || b.mistake,
     },
     {
@@ -256,13 +354,26 @@ function mistakeScenes(b: LegacyMistake, hook: string, ch?: [string, string], vi
       body: b.fix,
       kind: 'rule',
       phase: 'Solution',
-      ...(model ? { model, params: vis ?? b.vis, stage: 'general' as const } : { model: inferredFallback }),
+      ...(hasModel ? { model: effectiveModel, params: effectiveParams, stage: 'general' as const } : {}),
       expression: b.fix,
     },
   ];
   if (ch) {
-    out.push({ title: 'تحدّي', body: ch[0], kind: 'explain', phase: 'Challenge', ...(model ? { model, params: vis ?? b.vis, stage: 'predict' as const } : { model: inferredFallback }) });
-    out.push({ title: 'الجواب', body: ch[1], kind: 'rule', phase: 'Challenge', ...(model ? { model, params: vis ?? b.vis, stage: 'general' as const } : { model: inferredFallback }) });
+    const chParams = hasModel ? parseChallengeParams(ch[0], effectiveModel) : undefined;
+    out.push({
+      title: 'تحدّي',
+      body: ch[0],
+      kind: 'explain',
+      phase: 'Challenge',
+      ...(hasModel ? { model: effectiveModel, params: chParams ?? effectiveParams, stage: 'predict' as const } : {}),
+    });
+    out.push({
+      title: 'الجواب',
+      body: ch[1],
+      kind: 'rule',
+      phase: 'Challenge',
+      ...(hasModel ? { model: effectiveModel, params: chParams ?? effectiveParams, stage: 'general' as const } : {}),
+    });
   }
   out.push({ title: 'الدعوة للعمل', body: CTA, kind: 'cta', phase: 'End card' });
   return out;
@@ -286,6 +397,7 @@ export function legacyToProject(entry: LegacyEntry): StudioProject | null {
       const x = INTUITION[n];
       if (!x) return null;
       const say = x.say ?? {};
+      const chParams = x.m ? parseChallengeParams(x.ch?.[0] ?? '', x.m) : undefined;
       const inits: SceneInit[] = [
         { title: 'الخطاف', body: x.hook, kind: 'hook', phase: 'Hook', model: x.m, params: x.r1, stage: 'predict', ...(say['p'] ? { narration: say['p'] } : {}) },
         { title: 'خمّن', body: x.hook, kind: 'explain', phase: 'Predict', model: x.r1?.m ?? x.m, params: x.r1, stage: 'predict', legacy: { reps: x.r1 }, ...(say['p'] ? { narration: say['p'] } : {}) },
@@ -294,7 +406,12 @@ export function legacyToProject(entry: LegacyEntry): StudioProject | null {
       ];
       if (x.r2) inits.push({ title: 'المستوى الثاني', body: x.rule, kind: 'explain', phase: 'Predict', model: x.r2.m, params: x.r2, stage: 'predict', legacy: { reps: x.r2 }, ...(say['p2'] ? { narration: say['p2'] } : {}) });
       inits.push({ title: 'القاعدة', body: x.rule, kind: 'rule', phase: 'Solution', model: x.m, params: x.r2 ?? x.r1, stage: 'general', ...(say['g'] ? { narration: say['g'] } : {}) });
-      if (x.ch) { inits.push({ title: 'تحدّي', body: x.ch[0], kind: 'explain', phase: 'Challenge' }, { title: 'الجواب', body: x.ch[1], kind: 'rule', phase: 'Challenge' }); }
+      if (x.ch) {
+        inits.push(
+          { title: 'تحدّي', body: x.ch[0], kind: 'explain', phase: 'Challenge', model: x.m, params: chParams ?? x.r2 ?? x.r1, stage: 'predict' },
+          { title: 'الجواب', body: x.ch[1], kind: 'rule', phase: 'Challenge', model: x.m, params: chParams ?? x.r2 ?? x.r1, stage: 'general' }
+        );
+      }
       inits.push({ title: 'الدعوة للعمل', body: CTA, kind: 'cta', phase: 'End card' });
       return projectFrom(entry, buildScenes(inits), { remediation: x.rule });
     }
@@ -311,7 +428,10 @@ export function legacyToProject(entry: LegacyEntry): StudioProject | null {
         })),
       ];
       if (answer) inits.push({ title: 'الجواب النهائي', body: answer, kind: 'rule', phase: 'Solution', model: x.ty, ...(x.sayEnd ? { narration: x.sayEnd } : {}) });
-      if (x.ch) inits.push({ title: 'تحدّي', body: [x.chAsk, x.ch[0]].filter(Boolean).join('\n'), kind: 'explain', phase: 'Challenge' }, { title: 'الجواب', body: x.ch[1], kind: 'rule', phase: 'Challenge' });
+      if (x.ch) inits.push(
+        { title: 'تحدّي', body: [x.chAsk, x.ch[0]].filter(Boolean).join('\n'), kind: 'explain', phase: 'Challenge', model: x.ty },
+        { title: 'الجواب', body: x.ch[1], kind: 'rule', phase: 'Challenge', model: x.ty }
+      );
       inits.push({ title: 'الدعوة للعمل', body: CTA, kind: 'cta', phase: 'End card' });
       return projectFrom(entry, buildScenes(inits), { remediation: answer });
     }
