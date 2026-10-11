@@ -1,12 +1,9 @@
-import { useState, useMemo } from 'react';
-import { BookOpen, Calendar, CheckCircle2, ChevronRight, Clock, Filter, Layers, Play, Sparkles, AlertCircle, ArrowRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowLeft, BookOpen, Check, ChevronLeft, Clock, Film, Lightbulb, Search, Wrench, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import mistakesJson from '@/data/legacy/mistakes.json';
-import readyJson from '@/data/legacy/ready.json';
-import intuitionJson from '@/data/legacy/intuition.json';
-import solveJson from '@/data/legacy/solve.json';
-import { legacyToProject, readyBase, type LegacyEntry, type LegacySource } from '@/lib/legacy-library';
-import { type StudioProject } from '@/lib/studio';
+import { ScenePreview } from './scene-preview';
+import { legacyToProject, listLegacy, type LegacyEntry, type LegacySource } from '@/lib/legacy-library';
+import { totalDuration, type StudioProject } from '@/lib/studio';
 
 export type CurriculumLevel = '4AM' | '3AS';
 
@@ -40,295 +37,104 @@ export const CURRICULUM_CHAPTERS: Record<CurriculumLevel, CurriculumChapter[]> =
   ],
 };
 
-interface PlannerItem {
-  id: string;
-  source: LegacySource;
-  title: string;
-  hook: string;
-  model: string;
-  status: 'published' | 'scheduled' | 'draft' | 'idea';
-  videoType: 'intuition' | 'mistake' | 'solve';
-  entry: LegacyEntry;
-}
 
-export function CurriculumPlanner({
-  onLoadProject,
-  onNotify,
-}: {
-  onLoadProject: (p: StudioProject) => void;
-  onNotify: (msg: string) => void;
+const chapterPatterns: Record<string, RegExp> = {
+  '4am-ch1': /قاسم|قسمة|PGCD|إقليدس/i,
+  '4am-ch2': /جذور|جذر/i,
+  '4am-ch3': /حرفي|متطابقات|نشر|تحليل|مربع مجموع/i,
+  '4am-ch4': /معادلات|متراجحات|سالب/i,
+  '4am-ch5': /طالس|فيثاغورس|مثلثات|ظل|جيب/i,
+  '4am-ch6': /دوال خطية|تآلفية/i,
+  '4am-ch7': /جمل|إحصاء|فضاء|مكعب|قوى/i,
+  '3as-ch1': /نهايات|استمرار/i,
+  '3as-ch2': /اشتقاق/i,
+  '3as-ch3': /أسية|لوغاريتم/i,
+  '3as-ch4': /تزايد/i,
+  '3as-ch5': /تكامل|أصلية/i,
+  '3as-ch6': /احتمال/i,
+  '3as-ch7': /متتالي/i,
+  '3as-ch8': /قسمة في Z|موافقات|أولية/i,
+  '3as-ch9': /مركبة/i,
+};
+const stages = [
+  { source: 'intuition', label: 'بناء الحدس', icon: Lightbulb },
+  { source: 'mistake', label: 'تشخيص الأخطاء', icon: Wrench },
+  { source: 'solve', label: 'حل التمارين', icon: BookOpen },
+] as const;
+const entries = stages.flatMap(stage => listLegacy(stage.source));
+const matchesChapter = (entry: LegacyEntry, chapter: CurriculumChapter) =>
+  entry.level === chapter.level && !!chapterPatterns[chapter.id]?.test(`${entry.chapter} ${entry.topic}`);
+
+export function CurriculumPlanner({ onLoadProject, onNotify }: {
+  onLoadProject: (project: StudioProject) => void;
+  onNotify: (message: string) => void;
 }) {
   const [level, setLevel] = useState<CurriculumLevel>('4AM');
-  const [selectedChapterId, setSelectedChapterId] = useState<string>(CURRICULUM_CHAPTERS['4AM'][0].id);
-
+  const [chapterId, setChapterId] = useState('4am-ch1');
+  const [source, setSource] = useState<LegacySource>('intuition');
+  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const chapters = CURRICULUM_CHAPTERS[level];
-  const activeChapter = chapters.find(c => c.id === selectedChapterId) ?? chapters[0];
+  const chapter = chapters.find(item => item.id === chapterId) ?? chapters[0];
+  const chapterEntries = useMemo(() => chapter ? entries.filter(entry => matchesChapter(entry, chapter)) : [], [chapter]);
+  const visibleEntries = useMemo(() => chapterEntries.filter(entry => entry.source === source &&
+    (!query.trim() || `${entry.topic} ${entry.hook} ${entry.summary}`.toLowerCase().includes(query.trim().toLowerCase()))), [chapterEntries, source, query]);
+  const selected = visibleEntries.find(entry => entry.id === selectedId) ?? visibleEntries[0];
+  const preview = useMemo(() => selected ? legacyToProject(selected) : null, [selected]);
+  const previewScene = preview?.scenes.find(scene => scene.kind === 'visual') ?? preview?.scenes[1] ?? preview?.scenes[0];
+  const activeStage = stages.find(stage => stage.source === source) ?? stages[0];
 
-  // Match items from database to chapter
-  const chapterItems = useMemo(() => {
-    const mistakes = mistakesJson as any[];
-    const ready = readyJson as any[];
-    const intuition = intuitionJson as any[];
-    const solve = solveJson as any[];
-
-    const chName = activeChapter.name;
-    const isCh = (str?: string) => {
-      if (!str) return false;
-      const s = str.trim();
-      if (level === '4AM') {
-        if (activeChapter.id === '4am-ch1') return /قاسم|قسمة|PGCD|إقليدس/i.test(s);
-        if (activeChapter.id === '4am-ch2') return /جذور|جذر/i.test(s);
-        if (activeChapter.id === '4am-ch3') return /حرفي|متطابقات|نشر|تحليل|مربع مجموع/i.test(s);
-        if (activeChapter.id === '4am-ch4') return /معادلات|متراجحات|سالب/i.test(s);
-        if (activeChapter.id === '4am-ch5') return /طالس|فيثاغورس|مثلثات|ظل|جيب/i.test(s);
-        if (activeChapter.id === '4am-ch6') return /دوال خطية|تآلفية/i.test(s);
-        if (activeChapter.id === '4am-ch7') return /جمل|إحصاء|فضاء|مكعب|قوى/i.test(s);
-      } else {
-        if (activeChapter.id === '3as-ch1') return /نهايات|استمرار/i.test(s);
-        if (activeChapter.id === '3as-ch2') return /اشتقاق/i.test(s);
-        if (activeChapter.id === '3as-ch3') return /أسية|لوغاريتم/i.test(s);
-        if (activeChapter.id === '3as-ch4') return /تزايد/i.test(s);
-        if (activeChapter.id === '3as-ch5') return /تكامل|أصلية/i.test(s);
-        if (activeChapter.id === '3as-ch6') return /احتمال/i.test(s);
-        if (activeChapter.id === '3as-ch7') return /متتالي/i.test(s);
-        if (activeChapter.id === '3as-ch8') return /قسمة في Z|موافقات|أولية/i.test(s);
-        if (activeChapter.id === '3as-ch9') return /مركبة/i.test(s);
-      }
-      return false;
-    };
-
-    const out: PlannerItem[] = [];
-
-    // 1. Intuition videos
-    intuition.forEach((x, idx) => {
-      if (x.lv === level && (isCh(x.chapter) || isCh(x.topic))) {
-        out.push({
-          id: `intuition-${idx}`,
-          source: 'intuition',
-          title: x.topic || 'بناء الحدس البصري',
-          hook: x.hook,
-          model: x.m,
-          status: idx === 0 ? 'published' : 'draft',
-          videoType: 'intuition',
-          entry: {
-            id: `intuition-${idx}`,
-            source: 'intuition',
-            level: x.lv,
-            chapter: x.chapter,
-            topic: x.topic,
-            hook: x.hook,
-            model: x.m,
-            summary: x.rule,
-          },
-        });
-      }
-    });
-
-    // 2. Mistakes / Diagnostic videos
-    mistakes.forEach((m, idx) => {
-      if (m.level === level && (isCh(m.chapter) || isCh(m.topic))) {
-        out.push({
-          id: `mistake-${idx}`,
-          source: 'mistake',
-          title: m.topic || 'تشخيص الفخ الشائع',
-          hook: m.mistake,
-          model: m.vis?.m ?? 'none',
-          status: 'draft',
-          videoType: 'mistake',
-          entry: {
-            id: `mistake-${idx}`,
-            source: 'mistake',
-            level: m.level,
-            chapter: m.chapter,
-            topic: m.topic,
-            hook: `${m.mistake}\nهل هذا صحيح؟ 🤔`,
-            model: m.vis?.m ?? 'none',
-            summary: m.mistake,
-          },
-        });
-      }
-    });
-
-    // 3. Solved exercise videos
-    solve.forEach((s, idx) => {
-      if (s.lv === level && (isCh(s.chapter) || isCh(s.topic))) {
-        out.push({
-          id: `solve-${idx}`,
-          source: 'solve',
-          title: s.topic || 'حل تمرين خطوة بخطوة',
-          hook: s.hook || s.topic,
-          model: 'solve',
-          status: 'idea',
-          videoType: 'solve',
-          entry: {
-            id: `solve-${idx}`,
-            source: 'solve',
-            level: s.lv,
-            chapter: s.chapter,
-            topic: s.topic,
-            hook: s.hook,
-            model: 'solve',
-            summary: s.topic,
-          },
-        });
-      }
-    });
-
-    return out;
-  }, [level, activeChapter]);
-
-  const intuitions = chapterItems.filter(i => i.videoType === 'intuition');
-  const mistakes = chapterItems.filter(i => i.videoType === 'mistake');
-  const exercises = chapterItems.filter(i => i.videoType === 'solve');
-
-  function openEntry(entry: LegacyEntry) {
-    const proj = legacyToProject(entry);
-    if (proj) {
-      onLoadProject(proj);
-      onNotify(`تم فتح فيديو: ${entry.topic}`);
-    }
+  function changeLevel(next: CurriculumLevel) {
+    setLevel(next);
+    setChapterId(CURRICULUM_CHAPTERS[next][0]?.id ?? '');
+    setQuery(''); setSelectedId(null);
+  }
+  function openProject() {
+    if (!preview || !selected) return;
+    onLoadProject(preview);
+    onNotify(`تم فتح فيديو: ${selected.topic}`);
   }
 
-  return (
-    <div className="curriculum-planner-root" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Level Selection Switcher */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--muted)', padding: 6, borderRadius: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, padding: '0 8px' }}>المستوى التعليمي:</span>
-        <Button
-          variant={level === '4AM' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => { setLevel('4AM'); setSelectedChapterId(CURRICULUM_CHAPTERS['4AM'][0].id); }}
-        >
-          🇩🇿 4AM / BEM (الرابعة متوسط)
-        </Button>
-        <Button
-          variant={level === '3AS' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => { setLevel('3AS'); setSelectedChapterId(CURRICULUM_CHAPTERS['3AS'][0].id); }}
-        >
-          🇩🇿 3AS / BAC (الثالثة ثانوي - بكالوريا)
-        </Button>
+  return <div className="curriculum-planner" dir="rtl">
+    <header className="planner-topbar">
+      <div className="planner-levels" role="group" aria-label="المستوى التعليمي">
+        <Button variant={level === '4AM' ? 'secondary' : 'ghost'} aria-pressed={level === '4AM'} onClick={() => changeLevel('4AM')}><span dir="ltr">4AM · BEM</span><small>الرابعة متوسط</small></Button>
+        <Button variant={level === '3AS' ? 'secondary' : 'ghost'} aria-pressed={level === '3AS'} onClick={() => changeLevel('3AS')}><span dir="ltr">3AS · BAC</span><small>الثالثة ثانوي</small></Button>
       </div>
-
-      {/* Chapters Horizontal Scroll / Selector */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
-        {chapters.map(c => (
-          <Button
-            key={c.id}
-            variant={selectedChapterId === c.id ? 'secondary' : 'outline'}
-            size="sm"
-            onClick={() => setSelectedChapterId(c.id)}
-            style={{ whiteSpace: 'nowrap', fontSize: 11, fontWeight: selectedChapterId === c.id ? 700 : 500 }}
-          >
-            {c.name}
-          </Button>
-        ))}
-      </div>
-
-      {/* Pedagogical Funnel Explanation */}
-      <div style={{ background: 'color-mix(in oklab, var(--primary) 8%, transparent)', border: '1px solid var(--primary)', borderRadius: 8, padding: '10px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <Sparkles size={16} style={{ color: 'var(--primary)' }} />
-          <strong style={{ fontSize: 13 }}>خريطة إنتاج المحتوى للباب: {activeChapter.name}</strong>
+      <span className="planner-total"><Film size={14}/>{entries.filter(entry => entry.level === level).length} فيديو في المكتبة</span>
+    </header>
+    <div className="planner-workspace">
+      <aside className="planner-chapters">
+        <div className="planner-section-label"><BookOpen size={14}/>الأبواب <span>{chapters.length}</span></div>
+        <nav aria-label="الأبواب الدراسية">{chapters.map(item => <Button key={item.id} variant="ghost" className={`planner-chapter ${chapter?.id === item.id ? 'is-selected' : ''}`} aria-current={chapter?.id === item.id ? 'true' : undefined} onClick={() => { setChapterId(item.id); setQuery(''); setSelectedId(null); }}>
+          <span className="planner-chapter-number">{String(item.order).padStart(2, '0')}</span>
+          <span className="planner-chapter-name">{item.name.replace(/^الباب [\d و]+ · /, '')}</span>
+          <ChevronLeft size={13}/>
+        </Button>)}</nav>
+      </aside>
+      <section className="planner-browser">
+        <div className="planner-chapter-heading"><span className="planner-section-label">الباب {chapter?.order}</span><h3>{chapter?.name.replace(/^الباب [\d و]+ · /, '')}</h3><small>{chapterEntries.length} فيديو متاح</small></div>
+        <div className="planner-stages" role="tablist" aria-label="نوع الفيديو">{stages.map((stage, index) => <Button key={stage.source} variant="ghost" role="tab" aria-selected={source === stage.source} className={`planner-stage ${source === stage.source ? 'is-selected' : ''}`} onClick={() => { setSource(stage.source); setSelectedId(null); }}><span className="planner-stage-step">{index + 1}</span><stage.icon size={14}/><span>{stage.label}</span><small>{chapterEntries.filter(entry => entry.source === stage.source).length}</small></Button>)}</div>
+        <div className="planner-search"><Search size={15}/><input aria-label="ابحث في فيديوهات الباب" placeholder="ابحث عن موضوع أو سؤال…" value={query} onChange={event => { setQuery(event.target.value); setSelectedId(null); }}/>{query && <Button variant="ghost" size="icon" aria-label="مسح البحث" onClick={() => setQuery('')}><X size={14}/></Button>}</div>
+        <div className="planner-list" role="tabpanel" aria-label={activeStage.label}>
+          {visibleEntries.map((entry, index) => <Button key={entry.id} variant="ghost" className={`planner-video ${selected?.id === entry.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === entry.id} onClick={() => setSelectedId(entry.id)}>
+            <span className="planner-video-number">{String(index + 1).padStart(2, '0')}</span><span className="planner-video-copy"><strong>{entry.topic}</strong><span>{entry.hook}</span></span>{selected?.id === entry.id ? <Check size={16}/> : <ChevronLeft size={16}/>}
+          </Button>)}
+          {!visibleEntries.length && <div className="planner-empty"><activeStage.icon size={26}/><strong>{query ? 'لا توجد نتائج مطابقة' : 'لا توجد فيديوهات لهذا النوع بعد'}</strong>{query ? <Button variant="outline" size="sm" onClick={() => setQuery('')}>مسح البحث</Button> : <Button variant="outline" size="sm" onClick={() => { const available = stages.find(stage => chapterEntries.some(entry => entry.source === stage.source)); if (available) setSource(available.source); }} disabled={!chapterEntries.length}>عرض الفيديوهات المتاحة</Button>}</div>}
         </div>
-        <p style={{ margin: 0, fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.5 }} dir="rtl">
-          خطة النشر الموصى بها لكل باب: <b>1. فيديو حدس بصري</b> (بدون قواعد سابقة لشد الانتباه) ← <b>2. فيديو تشخيص فخ شائع</b> (العلاج وحفظ النقاط) ← <b>3. فيديو حل مسألة نموذجية</b> (خطوة بخطوة).
-        </p>
-      </div>
-
-      {/* Funnel 3-Columns Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-        {/* Column 1: Intuition */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              💡 1. بناء الحدس ({intuitions.length})
-            </span>
-            <span style={{ fontSize: 9, background: 'var(--muted)', padding: '2px 6px', borderRadius: 4 }}>الفيديو الأول</span>
-          </div>
-          {intuitions.length === 0 ? (
-            <small style={{ color: 'var(--muted-foreground)', display: 'block', padding: 8 }}>لا يوجد فيديو حدس جاهز لهذا الباب.</small>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {intuitions.map(item => (
-                <div key={item.id} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }} dir="rtl">{item.title}</div>
-                  <div style={{ fontSize: 10, color: 'var(--muted-foreground)', marginBottom: 8 }} dir="rtl">{item.hook}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 9, color: 'var(--primary)' }}>Model: {item.model}</span>
-                    <Button size="sm" style={{ height: 22, fontSize: 10 }} onClick={() => openEntry(item.entry)}>
-                      <Play size={10} style={{ marginLeft: 4 }} /> إنتاج الآن
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Column 2: Mistakes / Diagnostic */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--coral)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              🩹 2. تشخيص الأخطاء ({mistakes.length})
-            </span>
-            <span style={{ fontSize: 9, background: 'var(--muted)', padding: '2px 6px', borderRadius: 4 }}>الفيديو الثاني</span>
-          </div>
-          {mistakes.length === 0 ? (
-            <small style={{ color: 'var(--muted-foreground)', display: 'block', padding: 8 }}>لا توجد أخطاء مسجلة لهذا الباب.</small>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {mistakes.map(item => (
-                <div key={item.id} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }} dir="rtl">{item.title}</div>
-                  <div style={{ fontSize: 10, color: 'var(--coral)', marginBottom: 8 }} dir="rtl">❌ {item.hook}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 9, color: 'var(--muted-foreground)' }}>Model: {item.model}</span>
-                    <Button size="sm" variant="outline" style={{ height: 22, fontSize: 10 }} onClick={() => openEntry(item.entry)}>
-                      <Play size={10} style={{ marginLeft: 4 }} /> إنتاج الآن
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Column 3: Solved Exercises */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              📝 3. حل التمارين ({exercises.length})
-            </span>
-            <span style={{ fontSize: 9, background: 'var(--muted)', padding: '2px 6px', borderRadius: 4 }}>الفيديو الثالث</span>
-          </div>
-          {exercises.length === 0 ? (
-            <div style={{ padding: 8 }}>
-              <small style={{ color: 'var(--muted-foreground)', display: 'block', marginBottom: 8 }}>
-                لم يتم إدراج تمرين لهذا الباب بعد.
-              </small>
-              <Button size="sm" variant="ghost" style={{ fontSize: 10, height: 24, width: '100%', border: '1px dashed var(--border)' }}>
-                ➕ أضف مسألة نموذجية
-              </Button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {exercises.map(item => (
-                <div key={item.id} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }} dir="rtl">{item.title}</div>
-                  <div style={{ fontSize: 10, color: 'var(--muted-foreground)', marginBottom: 8 }} dir="rtl">{item.hook}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 9, color: 'var(--muted-foreground)' }}>حل تفصيلي</span>
-                    <Button size="sm" variant="outline" style={{ height: 22, fontSize: 10 }} onClick={() => openEntry(item.entry)}>
-                      <Play size={10} style={{ marginLeft: 4 }} /> إنتاج الآن
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+        <footer className="planner-list-footer">{visibleEntries.length} فيديو · {activeStage.label}</footer>
+      </section>
+      <aside className="planner-detail">
+        <span className="planner-section-label"><Film size={14}/>معاينة الفيديو</span>
+        {selected && preview && previewScene ? <>
+          <div className="planner-artwork"><ScenePreview project={preview} scene={previewScene} elapsed={previewScene.duration} miniature/></div>
+          <span className={`planner-type planner-type-${source}`}>{activeStage.label}</span>
+          <h4>{selected.topic}</h4>
+          <div className="planner-preview-meta"><span><Film size={13}/>{preview.scenes.length} مشاهد</span><span><Clock size={13}/>{Math.round(totalDuration(preview))} ثانية</span></div>
+          <p className="planner-summary">{selected.summary}</p>
+          <Button className="planner-open" onClick={openProject}>فتح في المحرر<ArrowLeft size={16}/></Button>
+        </> : <div className="planner-detail-empty"><Film size={28}/><span>لا يوجد فيديو للمعاينة</span></div>}
+      </aside>
     </div>
-  );
+  </div>;
 }
