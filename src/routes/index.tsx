@@ -257,9 +257,9 @@ function Studio() {
       <footer className="statusbar"><span><span className="live-dot"/>QED Studio<i>v5.0</i></span><span>{project.scenes.length} scenes · {ratio} · 30 fps</span><span>Made for moments of understanding. ∎</span></footer>
     </div>
     <input ref={file} type="file" accept=".json,.cmb.json,.qed.json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void importFile(f); e.target.value = ''; }}/>{audioUrl && <audio ref={audio} src={audioUrl}/>}
-    <Dialog open={panel !== null} onOpenChange={open => { if (!open) setPanel(null); }}><DialogContent className="studio-modal"><span className="overline">QED STUDIO</span><DialogTitle>{panel ? { planner: 'مخطط المحتوى التعليمي والدروس (Curriculum Planner)', projects: 'Your projects', templates: 'Start with a story', library: 'Story & lesson', audio: 'Audio studio', settings: 'Studio settings', export: 'Ready for the world' }[panel] : ''}</DialogTitle><DialogDescription className="sr-only">{panel} options</DialogDescription>
+    <Dialog open={panel !== null} onOpenChange={open => { if (!open) setPanel(null); }}><DialogContent className={panel === 'planner' ? 'studio-modal planner-modal' : 'studio-modal'}><span className="overline">QED STUDIO</span><DialogTitle>{panel ? { planner: 'مخطط المحتوى', projects: 'Your projects', templates: 'Start with a story', library: 'Story & lesson', audio: 'Audio studio', settings: 'Studio settings', export: 'Ready for the world' }[panel] : ''}</DialogTitle><DialogDescription className="sr-only">{panel} options</DialogDescription>
       {panel === 'planner' && (
-        <div className="modal-content">
+        <div className="planner-modal-content">
           <CurriculumPlanner
             onLoadProject={p => {
               load(p);
