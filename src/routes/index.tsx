@@ -16,6 +16,9 @@ import { lessonToStudioProject, searchEducationalLessons } from '@/lib/education
 import { legacyCounts, legacyLevels, legacyToProject, searchLegacy, SOLVE_TYPES, type LegacySource } from '@/lib/legacy-library';
 import { listProjects, getProject, saveProject as persistProject, deleteProject as removeStoredProject, duplicateProject as cloneStoredProject, searchProjects, listSnapshots, createSnapshot, type ProjectMeta, type ProjectSnapshot } from '@/lib/project-store';
 import { VoiceRecorder, isRecordingSupported } from '@/lib/audio-recording';
+import voiceAsset from '@/assets/qed-parents-voice.mp3.asset.json';
+// Bundled TV campaign voice-over; projects naming it reattach automatically.
+const parentsVoice = { name: 'qed-parents-voice.mp3', url: voiceAsset.url };
 
 export const Route = createFileRoute('/')({
   head: () => ({ meta: [
@@ -173,7 +176,7 @@ function Studio() {
     setSelected(i => Math.min(i, project.scenes.length - 1));
     setTime(t => Math.min(t, duration));
   }, [project, duration]);
-  useEffect(() => () => { if (audioUrl) URL.revokeObjectURL(audioUrl); }, [audioUrl]);
+  useEffect(() => () => { if (audioUrl.startsWith('blob:')) URL.revokeObjectURL(audioUrl); }, [audioUrl]);
   useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(''), 4000); return () => clearTimeout(t); }, [notice]);
   function commit(p: StudioProject, key = '') { const now = performance.now(); if (!key || lastEdit.current.key !== key || now - lastEdit.current.at > 700) setHistory(h => [...h.slice(-29), project]); lastEdit.current = { key, at: now }; setFuture([]); setProject(p); }
   function edit(patch: Partial<Scene>) { if (!scene) return; commit({ ...project, scenes: project.scenes.map(s => s.id === scene.id ? { ...s, ...patch } : s) }, `${scene.id}:${Object.keys(patch).join(',')}`); }
@@ -185,7 +188,10 @@ function Studio() {
   function reorder(from: number, to: number) { const scenes = moveScene(project.scenes, from, to); commit({ ...project, scenes }); setSelected(to); setTime(sceneStart(scenes, to)); setPlaying(false); }
   function trim(id: string, seconds: number) { const next = trimScene(project, id, seconds); commit(next); setTime(sceneStart(next.scenes, selected)); setPlaying(false); }
   function remove() { if (project.scenes.length <= 1) return; const scenes = project.scenes.filter((_, i) => i !== selected).map((s,i) => ({ ...s, label: String(i+1).padStart(2,'0') })); const index = Math.max(0, selected - 1); commit({ ...project, scenes }); setSelected(index); setTime(sceneStart(scenes, index)); setPlaying(false); }
-  function load(p: StudioProject) { setProject(p); setHistory([]); setFuture([]); setImportWarnings([]); setAudioUrl(''); setAudioName(''); lastEdit.current = { key: '', at: 0 }; setSelected(0); setTime(0); setPlaying(false); setPanel(null); }
+  function load(p: StudioProject) {
+    const bundled = p.mediaName === parentsVoice.name;
+    setProject(p); setHistory([]); setFuture([]); setImportWarnings([]); setAudioUrl(bundled ? parentsVoice.url : ''); setAudioName(bundled ? parentsVoice.name : ''); lastEdit.current = { key: '', at: 0 }; setSelected(0); setTime(0); setPlaying(false); setPanel(null);
+  }
   function exportProject() { const url = URL.createObjectURL(new Blob([JSON.stringify(projectFile(project), null, 2)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = `${project.name}.cmb.json`; a.click(); URL.revokeObjectURL(url); setNotice('Editable project downloaded'); }
   async function importFile(f: File) {
     try { const result = parseProjectFile(JSON.parse(await f.text())); load(result.project); setImportWarnings(result.warnings); setNotice('Project imported'); }
