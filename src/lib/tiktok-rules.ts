@@ -15,9 +15,12 @@ export const postSchema = z.object({
 });
 export type TikTokPost = z.infer<typeof postSchema>;
 export function uploadPlan(size: number) {
-  const chunkSize = Math.min(size, 5 * 1024 ** 2);
-  const chunkCount = Math.max(1, Math.floor(size / chunkSize));
-  return { chunkSize, chunkCount };
+  const CHUNK_SIZE = 5 * 1024 * 1024;
+  if (size <= CHUNK_SIZE) {
+    return { chunkSize: size, chunkCount: 1 };
+  }
+  const chunkCount = Math.ceil(size / CHUNK_SIZE);
+  return { chunkSize: CHUNK_SIZE, chunkCount };
 }
 export function chunkEnd(start: number, size: number, chunkSize: number, chunkCount: number) {
   return Math.floor(start / chunkSize) === chunkCount - 1 ? size : start + chunkSize;

@@ -10,11 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiPublicOauthTiktokReturnRouteImport } from './routes/api/public/oauth/tiktok/return'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicOauthTiktokReturnRoute =
@@ -26,27 +38,36 @@ const ApiPublicOauthTiktokReturnRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/api/public/oauth/tiktok/return': typeof ApiPublicOauthTiktokReturnRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/api/public/oauth/tiktok/return': typeof ApiPublicOauthTiktokReturnRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/api/public/oauth/tiktok/return': typeof ApiPublicOauthTiktokReturnRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/oauth/tiktok/return'
+  fullPaths: '/' | '/privacy' | '/terms' | '/api/public/oauth/tiktok/return'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/oauth/tiktok/return'
-  id: '__root__' | '/' | '/api/public/oauth/tiktok/return'
+  to: '/' | '/privacy' | '/terms' | '/api/public/oauth/tiktok/return'
+  id:
+    '__root__' | '/' | '/privacy' | '/terms' | '/api/public/oauth/tiktok/return'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   ApiPublicOauthTiktokReturnRoute: typeof ApiPublicOauthTiktokReturnRoute
 }
 
@@ -57,6 +78,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/oauth/tiktok/return': {
@@ -71,6 +106,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
   ApiPublicOauthTiktokReturnRoute: ApiPublicOauthTiktokReturnRoute,
 }
 export const routeTree = rootRouteImport

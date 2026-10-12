@@ -26,17 +26,26 @@ describe('TikTok Integration Rules & Publishing Plan', () => {
   });
 
   it('calculates chunked upload plans correctly', () => {
-    // 12 MB video
+    // 3 MB video (single chunk upload where chunkSize === size)
+    const single = uploadPlan(3 * 1024 * 1024);
+    expect(single.chunkSize).toBe(3 * 1024 * 1024);
+    expect(single.chunkCount).toBe(1);
+    expect(chunkEnd(0, 3 * 1024 * 1024, single.chunkSize, single.chunkCount)).toBe(3 * 1024 * 1024);
+
+    // 12 MB video (multi-chunk: 5MB + 5MB + 2MB)
     const plan = uploadPlan(12 * 1024 * 1024);
     expect(plan.chunkSize).toBe(5 * 1024 * 1024);
-    expect(plan.chunkCount).toBe(2);
+    expect(plan.chunkCount).toBe(3);
 
     // Chunk end calculations
     const end0 = chunkEnd(0, 12 * 1024 * 1024, plan.chunkSize, plan.chunkCount);
     expect(end0).toBe(5 * 1024 * 1024);
 
     const end1 = chunkEnd(5 * 1024 * 1024, 12 * 1024 * 1024, plan.chunkSize, plan.chunkCount);
-    expect(end1).toBe(12 * 1024 * 1024);
+    expect(end1).toBe(10 * 1024 * 1024);
+
+    const end2 = chunkEnd(10 * 1024 * 1024, 12 * 1024 * 1024, plan.chunkSize, plan.chunkCount);
+    expect(end2).toBe(12 * 1024 * 1024);
   });
 
   it('validates compliant post payloads', () => {

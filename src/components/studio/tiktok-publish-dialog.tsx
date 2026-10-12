@@ -243,15 +243,17 @@ export function TikTokPublishDialog({
 
       // Step 3: Chunked upload
       setPublishPhase('uploading');
-      for (let offset = 0; offset < blob.size; offset += plan.chunkSize) {
-        const slice = blob.slice(offset, Math.min(offset + plan.chunkSize, blob.size), 'video/mp4');
+      for (let c = 0; c < plan.chunkCount; c++) {
+        const offset = c * plan.chunkSize;
+        const end = c === plan.chunkCount - 1 ? blob.size : offset + plan.chunkSize;
+        const slice = blob.slice(offset, end, 'video/mp4');
         const fd = new FormData();
         fd.append('jobId', plan.jobId);
         fd.append('start', String(offset));
         fd.append('chunk', slice);
 
         await uploadTikTokChunk({ data: fd });
-        const uploadedRatio = (offset + slice.size) / blob.size;
+        const uploadedRatio = end / blob.size;
         setPublishProgress(50 + Math.round(uploadedRatio * 45)); // 50% to 95%
       }
 

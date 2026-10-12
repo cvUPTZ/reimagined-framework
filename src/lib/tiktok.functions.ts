@@ -57,7 +57,26 @@ export const beginTikTokPost = createServerFn({ method: 'POST' }).middleware([re
   const { data: job, error } = await supabaseAdmin.from('tiktok_publish_jobs').insert({ user_id: context.userId, project_name: data.projectName, video_size: data.size, chunk_size: plan.chunkSize, chunk_count: plan.chunkCount }).select('id').single();
   if (error || !job) throw new Error('Could not create a publishing record.');
   try {
-    const result = await tiktokRequest<{ publish_id: string; upload_url: string }>(context.userId, '/post/publish/video/init/', { post_info: { title: data.title, privacy_level: data.privacy, disable_comment: !data.allowComment, disable_duet: !data.allowDuet, disable_stitch: !data.allowStitch, brand_organic_toggle: data.ownBrand, brand_content_toggle: data.paidBrand }, source_info: { source: 'FILE_UPLOAD', video_size: data.size, chunk_size: plan.chunkSize, total_chunk_count: plan.chunkCount } });
+    const isPrivate = data.privacy === 'SELF_ONLY';
+    const post_info: Record<string, unknown> = {
+      title: data.title,
+      privacy_level: data.privacy,
+      disable_comment: !data.allowComment,
+      disable_duet: isPrivate ? true : !data.allowDuet,
+      disable_stitch: isPrivate ? true : !data.allowStitch,
+    };
+    if (data.ownBrand) post_info.brand_organic_toggle = true;
+    if (data.paidBrand) post_info.brand_content_toggle = true;
+
+    const result = await tiktokRequest<{ publish_id: string; upload_url: string }>(context.userId, '/post/publish/video/init/', {
+      post_info,
+      source_info: {
+        source: 'FILE_UPLOAD',
+        video_size: data.size,
+        chunk_size: plan.chunkSize,
+        total_chunk_count: plan.chunkCount,
+      },
+    });
     const uploadUrl = new URL(result.upload_url);
     if (uploadUrl.protocol !== 'https:' || !(uploadUrl.hostname === 'open-upload.tiktokapis.com' || uploadUrl.hostname.endsWith('.tiktokapis.com') || uploadUrl.hostname.endsWith('.tiktok.com') || uploadUrl.hostname.endsWith('.byteoversea.com'))) throw new Error('Unexpected TikTok upload destination.');
     const { encryptConnectionKey } = await import('@/server/connection-key-crypto');
