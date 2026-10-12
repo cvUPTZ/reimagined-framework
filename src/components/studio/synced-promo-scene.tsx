@@ -1,5 +1,5 @@
 import type { Scene, StudioProject } from '@/lib/studio';
-import { TELEGRAM_QR_SRC } from '@/assets/telegram-qr';
+import { TELEGRAM_QR_SRC, TELEGRAM_BOT_HANDLE } from '@/assets/telegram-qr';
 
 const ar = { unicodeBidi: 'plaintext' as const };
 const reveal = (t: number, start = 0, length = .55) => 1 - Math.pow(1 - Math.min(1, Math.max(0, (t - start) / length)), 3);
@@ -31,6 +31,6 @@ export function SyncedPromoScene({ scene, project, width, height, elapsed: t }: 
     {layout === 'cause' && <>{chain(['حلّ المعادلات', 'جمع الكسور', 'توحيد المقامات'], [.1, 1.2, 2.3])}{stroke('M105 353q-35 43 5 79h255q45-43-2-78z', 2.8)}{label('هنا بدأ الخلل', 700, 360, 3, 30, 'var(--ink-orange)')}</>}
     {layout === 'path' && <>{chain(['المقام المشترك', 'جمع الكسور', 'حلّ المعادلة'], [1.8, 3.2, 4.8])}{label('من الجذر… خطوة بخطوة', 700, 360, .2, 27, 'var(--ink-green)')}</>}
     {layout === 'identity' && <>{label('QED ∎', 235, 245, 3, 70)}{label('وهو المطلوب إثباته', 235, 310, 4.6, 28)}{stroke('M105 335q120 12 255-1', 5)}{label('مسار علاجي مخصّص', 235, 415, .2, 27, 'var(--ink-blue)')}</>}
-    {layout === 'cta' && <><rect x="75" y="130" width="320" height="320" rx="4" fill="var(--qr-paper)"/><image href={TELEGRAM_QR_SRC} x="100" y="155" width="270" height="270"/>{label('للأولياء: سجّلوا أبناءكم', 700, 335, 2.5, 27, 'var(--ink-blue)')}{label('للتلميذ: ابدأ أول درس', 700, 389, 5.1, 27, 'var(--ink-orange)')}{label(project.qrBotHandle ?? '@QED_Math_bot', 235, 486, .1, 21)}</>}
+    {layout === 'cta' && <><rect x="75" y="130" width="320" height="320" rx="4" fill="var(--qr-paper)"/><image href={TELEGRAM_QR_SRC} x="100" y="155" width="270" height="270"/>{label('للأولياء: سجّلوا أبناءكم', 700, 335, 2.5, 27, 'var(--ink-blue)')}{label('للتلميذ: ابدأ أول درس', 700, 389, 5.1, 27, 'var(--ink-orange)')}{label(project.qrBotHandle ?? TELEGRAM_BOT_HANDLE, 235, 486, .1, 21)}</>}
   </g>;
 }
