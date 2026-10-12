@@ -46,6 +46,16 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const url = new URL(request.url);
+    if (url.pathname === '/tiktokAPgADthgb1p0CvLTsKLB54Ijl3NUvTWi.txt') {
+      return new Response('tiktok-developers-site-verification=APgADthgb1p0CvLTsKLB54Ijl3NUvTWi', {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache',
+        },
+      });
+    }
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
