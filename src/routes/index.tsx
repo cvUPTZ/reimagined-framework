@@ -455,14 +455,7 @@ function Studio() {
           setPanel(null);
         }}>
           <div className="template-art" style={{ width: 140, flexShrink: 0 }}>
-            <svg viewBox="0 0 160 90">
-              <rect x="8" y="8" width="144" height="74" rx="6" fill="#0b121e" stroke="var(--blue)" strokeWidth="1.5"/>
-              <path d="M18 55Q80 15 142 55" fill="none" stroke="var(--blue)" strokeWidth="2"/>
-              <line x1="45" y1="30" x2="115" y2="70" stroke="var(--gold)" strokeWidth="1.5" strokeDasharray="3 2"/>
-              <circle cx="80" cy="40" r="4" fill="#fff"/>
-              <rect x="110" y="16" width="34" height="13" rx="2" fill="var(--blue)" opacity="0.2"/>
-              <text x="127" y="25" textAnchor="middle" fontSize="7" fill="var(--blue)" fontWeight="700">16:9 TV</text>
-            </svg>
+            {tvMarketingLoopProject.scenes[0] && <ScenePreview project={tvMarketingLoopProject} scene={tvMarketingLoopProject.scenes[0]} miniature/>}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, textAlign: 'start' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -470,7 +463,7 @@ function Studio() {
               <span style={{ fontSize: 9, background: 'var(--blue)', color: '#000', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>16:9 TV LOOP</span>
             </div>
             <small style={{ fontSize: 10, color: 'var(--muted-foreground)', lineHeight: 1.5 }} dir="auto">
-              فيديو تسويقي متكامل للشاشات التلفزيونية في المعارض ومراكز التعليم. يجمع بين استقطاب الأولياء (التفوق والتحصين من فخاخ BEM و BAC) وإلهام التلاميذ (الفهم البصري والمتعة الرياضية)، مع رمز QR تفاعلي وتكرار مستمر.
+              عرض موجّه للأولياء: بداية من قلق الأسرة، إلى اكتشاف شرح أوضح مع الأبناء، وانتهاء بدعوة عبر تيليجرام. بدون دروس رياضية أو وعود بالعلامات.
             </small>
             <div style={{ display: 'flex', gap: 6, marginTop: 2, fontSize: 9, color: 'var(--blue)' }}>
               <span>8 مشاهد إعلانية (78 ثانية)</span>

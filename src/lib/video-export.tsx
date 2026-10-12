@@ -51,7 +51,7 @@ export async function createFrameRenderer(project: StudioProject, resolution: nu
     const svg = new DOMParser().parseFromString(markup, 'image/svg+xml').documentElement;
     // SVG image decoding is isolated from the page: retain artwork color tokens.
     const rootStyles = getComputedStyle(document.documentElement);
-    const tokenNames = ['primary', 'foreground', 'muted-foreground', 'canvas-background', 'canvas-grid', 'axis', 'gold', 'blue', 'violet', 'coral', 'border', 'border-strong', 'surface'];
+    const tokenNames = ['primary', 'foreground', 'muted-foreground', 'canvas-background', 'canvas-grid', 'axis', 'gold', 'blue', 'violet', 'coral', 'border', 'border-strong', 'surface', 'background', 'qr-paper'];
     svg.setAttribute('style', tokenNames.map(name => `--${name}:${rootStyles.getPropertyValue(`--${name}`).trim()}`).join(';'));
     svg.setAttribute('width', String(canvas.width)); svg.setAttribute('height', String(canvas.height));
     const style = document.createElementNS('http://www.w3.org/2000/svg', 'style'); style.textContent = sharedCss; svg.prepend(style);

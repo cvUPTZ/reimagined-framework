@@ -26,11 +26,6 @@ describe("studio project rules", () => {
     expect(tvMarketingLoopProject.scenes).toHaveLength(8);
     expect(totalDuration(tvMarketingLoopProject.scenes)).toBe(78);
     
-    // Addresses both parents and students
-    const bodies = tvMarketingLoopProject.scenes.map(s => s.body).join(' ');
-    const titles = tvMarketingLoopProject.scenes.map(s => s.title).join(' ');
-    expect(titles).toContain('الأولياء');
-    expect(titles).toContain('الامتحانات');
     
     // Contains custom marketing promo layouts on all scenes
     const layouts = tvMarketingLoopProject.scenes.map(s => s.legacy?.['promoLayout']);
@@ -49,5 +44,9 @@ describe("studio project rules", () => {
     const parsed = parseProjectFile(projectFile(tvMarketingLoopProject));
     expect(parsed.project.scenes).toHaveLength(8);
     expect(parsed.project.format).toBe("landscape");
+  });
+  it("keeps the TV campaign parent-facing rather than using mathematical visual models", () => {
+    expect(tvMarketingLoopProject.legacy?.['campaignAudience']).toBe('parents');
+    expect(tvMarketingLoopProject.scenes.every(scene => scene.visual === 'none')).toBe(true);
   });
 });
