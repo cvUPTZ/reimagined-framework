@@ -18,7 +18,7 @@ export const startTikTokConnect = createServerFn({ method: 'POST' }).middleware(
   const { authorizeAppUserOAuth } = await import('@/integrations/lovable/appUserConnector');
   const { getConnectionKeyForUser } = await import('@/server/appUserConnections.server');
   const connectionAPIKey = await getConnectionKeyForUser(context.userId, 'tiktok');
-  const result = await authorizeAppUserOAuth({ gatewayBaseUrl: 'https://connector-gateway.lovable.dev', connectorId: 'tiktok', appUserId: context.userId, clientAPIKey: clientKey, returnUrl: returnUrl.toString(), connectionAPIKey: connectionAPIKey ?? undefined, credentialsConfiguration: { scopes: TIKTOK_SCOPES } });
+  const result = await authorizeAppUserOAuth({ gatewayBaseUrl: 'https://connector-gateway.lovable.dev', connectorId: 'tiktok', appUserId: context.userId, clientAPIKey: clientKey, returnUrl: returnUrl.toString(), ...(connectionAPIKey ? { connectionAPIKey } : {}), credentialsConfiguration: { scopes: TIKTOK_SCOPES } });
   return { authorizationUrl: result.authorizationUrl, attempt: attempt.id };
 });
 export const completeTikTokConnect = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ code: z.string().min(1).max(4096), attempt: z.string().uuid() })).handler(async ({ context, data }) => {
