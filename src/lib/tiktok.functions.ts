@@ -90,7 +90,7 @@ export const uploadTikTokChunk = createServerFn({ method: 'POST' }).middleware([
   const jobId = z.string().uuid().parse(input.get('jobId'));
   const start = z.coerce.number().int().nonnegative().parse(input.get('start'));
   const file = input.get('chunk');
-  if (!(file instanceof Blob) || file.size <= 0 || file.size > 10 * 1024 ** 2) throw new Error('Invalid video chunk.');
+  if (!(file instanceof Blob) || file.size <= 0 || file.size > 15 * 1024 ** 2) throw new Error('Invalid video chunk.');
   return { jobId, start, file };
 }).handler(async ({ context, data }) => {
   const { supabaseAdmin } = await import('@/integrations/supabase/client.server');

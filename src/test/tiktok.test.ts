@@ -25,27 +25,29 @@ describe('TikTok Integration Rules & Publishing Plan', () => {
     expect(TIKTOK_SCOPES).toContain('video.publish');
   });
 
-  it('calculates chunked upload plans correctly', () => {
-    // 3 MB video (single chunk upload where chunkSize === size)
-    const single = uploadPlan(3 * 1024 * 1024);
-    expect(single.chunkSize).toBe(3 * 1024 * 1024);
-    expect(single.chunkCount).toBe(1);
-    expect(chunkEnd(0, 3 * 1024 * 1024, single.chunkSize, single.chunkCount)).toBe(3 * 1024 * 1024);
+  it('calculates chunked upload plans correctly per TikTok Media Transfer Guide', () => {
+    // 3 MB video (single chunk upload where chunkSize === size, chunkCount === 1)
+    const single3 = uploadPlan(3 * 1024 * 1024);
+    expect(single3.chunkSize).toBe(3 * 1024 * 1024);
+    expect(single3.chunkCount).toBe(1);
+    expect(chunkEnd(0, 3 * 1024 * 1024, single3.chunkSize, single3.chunkCount)).toBe(3 * 1024 * 1024);
 
-    // 12 MB video (multi-chunk: 5MB + 5MB + 2MB)
-    const plan = uploadPlan(12 * 1024 * 1024);
-    expect(plan.chunkSize).toBe(5 * 1024 * 1024);
-    expect(plan.chunkCount).toBe(3);
+    // 7 MB video (fits under 10 MB single chunk upload)
+    const single7 = uploadPlan(7 * 1024 * 1024);
+    expect(single7.chunkSize).toBe(7 * 1024 * 1024);
+    expect(single7.chunkCount).toBe(1);
+    expect(chunkEnd(0, 7 * 1024 * 1024, single7.chunkSize, single7.chunkCount)).toBe(7 * 1024 * 1024);
 
-    // Chunk end calculations
-    const end0 = chunkEnd(0, 12 * 1024 * 1024, plan.chunkSize, plan.chunkCount);
+    // 12 MB video (multi-chunk: floor(12 / 5) = 2 chunks; trailing bytes merged into final chunk per TikTok specification)
+    const plan12 = uploadPlan(12 * 1024 * 1024);
+    expect(plan12.chunkSize).toBe(5 * 1024 * 1024);
+    expect(plan12.chunkCount).toBe(2);
+
+    const end0 = chunkEnd(0, 12 * 1024 * 1024, plan12.chunkSize, plan12.chunkCount);
     expect(end0).toBe(5 * 1024 * 1024);
 
-    const end1 = chunkEnd(5 * 1024 * 1024, 12 * 1024 * 1024, plan.chunkSize, plan.chunkCount);
-    expect(end1).toBe(10 * 1024 * 1024);
-
-    const end2 = chunkEnd(10 * 1024 * 1024, 12 * 1024 * 1024, plan.chunkSize, plan.chunkCount);
-    expect(end2).toBe(12 * 1024 * 1024);
+    const end1 = chunkEnd(5 * 1024 * 1024, 12 * 1024 * 1024, plan12.chunkSize, plan12.chunkCount);
+    expect(end1).toBe(12 * 1024 * 1024);
   });
 
   it('validates compliant post payloads', () => {

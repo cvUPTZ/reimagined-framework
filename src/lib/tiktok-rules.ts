@@ -13,17 +13,19 @@ export const postSchema = z.object({
   allowComment: z.boolean(), allowDuet: z.boolean(), allowStitch: z.boolean(),
   ownBrand: z.boolean(), paidBrand: z.boolean(), consent: z.literal(true),
 });
-export type TikTokPost = z.infer<typeof postSchema>;
 export function uploadPlan(size: number) {
-  const CHUNK_SIZE = 5 * 1024 * 1024;
-  if (size <= CHUNK_SIZE) {
+  const CHUNK_UNIT = 5 * 1024 * 1024;
+  // If video fits in a single chunk (up to 10 MB), TikTok requires chunk_size === video_size and total_chunk_count === 1
+  if (size <= 10 * 1024 * 1024) {
     return { chunkSize: size, chunkCount: 1 };
   }
-  const chunkCount = Math.ceil(size / CHUNK_SIZE);
-  return { chunkSize: CHUNK_SIZE, chunkCount };
+  // For larger videos, total_chunk_count MUST equal Math.floor(video_size / chunk_size) per TikTok Media Transfer Guide
+  const chunkCount = Math.floor(size / CHUNK_UNIT);
+  return { chunkSize: CHUNK_UNIT, chunkCount };
 }
 export function chunkEnd(start: number, size: number, chunkSize: number, chunkCount: number) {
-  return Math.floor(start / chunkSize) === chunkCount - 1 ? size : start + chunkSize;
+  const chunkIndex = Math.floor(start / chunkSize);
+  return chunkIndex >= chunkCount - 1 ? size : start + chunkSize;
 }
 export function validatePost(post: TikTokPost, creator: TikTokCreator) {
   if (!creator.privacy_level_options.includes(post.privacy)) throw new Error('Choose an available TikTok audience.');
