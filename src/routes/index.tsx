@@ -16,9 +16,7 @@ import { lessonToStudioProject, searchEducationalLessons } from '@/lib/education
 import { legacyCounts, legacyLevels, legacyToProject, searchLegacy, SOLVE_TYPES, type LegacySource } from '@/lib/legacy-library';
 import { listProjects, getProject, saveProject as persistProject, deleteProject as removeStoredProject, duplicateProject as cloneStoredProject, searchProjects, listSnapshots, createSnapshot, type ProjectMeta, type ProjectSnapshot } from '@/lib/project-store';
 import { VoiceRecorder, isRecordingSupported } from '@/lib/audio-recording';
-import voiceAsset from '@/assets/qed-parents-voice.mp3.asset.json';
-// Bundled TV campaign voice-over; projects naming it reattach automatically.
-const parentsVoice = { name: 'qed-parents-voice.mp3', url: voiceAsset.url };
+import { campaignAudio } from '@/lib/campaign-audio';
 
 export const Route = createFileRoute('/')({
   head: () => ({ meta: [
@@ -90,7 +88,7 @@ function Studio() {
   }, []);
 
   useEffect(() => {
-    try { const raw = localStorage.getItem('qed-studio-project-v1'); if (raw) { const result = parseProjectFile(JSON.parse(raw)); setProject(result.project); setImportWarnings(result.warnings); } } catch { setNotice('Your saved project could not be opened. Import a backup to recover it.'); }
+    try { const raw = localStorage.getItem('qed-studio-project-v1'); if (raw) { const result = parseProjectFile(JSON.parse(raw)); setProject(result.project); setImportWarnings(result.warnings); const bundled = campaignAudio(result.project); if (bundled) { setAudioUrl(bundled.url); setAudioName(bundled.name); setVolume(result.project.audioTrack?.volume ?? 100); setMuted(result.project.audioTrack?.muted ?? false); } } } catch { setNotice('Your saved project could not be opened. Import a backup to recover it.'); }
     setHydrated(true);
   }, []);
   useEffect(() => { if (!hydrated) return; setSaved(false); const timer = setTimeout(() => { try { persistProject(project); setSaved(true); } catch { setNotice('Browser storage is full. Download your project to save it.'); } }, 450); return () => clearTimeout(timer); }, [project, hydrated]);
@@ -189,8 +187,8 @@ function Studio() {
   function trim(id: string, seconds: number) { const next = trimScene(project, id, seconds); commit(next); setTime(sceneStart(next.scenes, selected)); setPlaying(false); }
   function remove() { if (project.scenes.length <= 1) return; const scenes = project.scenes.filter((_, i) => i !== selected).map((s,i) => ({ ...s, label: String(i+1).padStart(2,'0') })); const index = Math.max(0, selected - 1); commit({ ...project, scenes }); setSelected(index); setTime(sceneStart(scenes, index)); setPlaying(false); }
   function load(p: StudioProject) {
-    const bundled = p.mediaName === parentsVoice.name;
-    setProject(p); setHistory([]); setFuture([]); setImportWarnings([]); setAudioUrl(bundled ? parentsVoice.url : ''); setAudioName(bundled ? parentsVoice.name : ''); lastEdit.current = { key: '', at: 0 }; setSelected(0); setTime(0); setPlaying(false); setPanel(null);
+    const bundled = campaignAudio(p);
+    setProject(p); setHistory([]); setFuture([]); setImportWarnings([]); setAudioUrl(bundled?.url ?? ''); setAudioName(bundled?.name ?? ''); setVolume(p.audioTrack?.volume ?? 65); setMuted(p.audioTrack?.muted ?? false); lastEdit.current = { key: '', at: 0 }; setSelected(0); setTime(0); setPlaying(false); setPanel(null);
   }
   function exportProject() { const url = URL.createObjectURL(new Blob([JSON.stringify(projectFile(project), null, 2)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = `${project.name}.cmb.json`; a.click(); URL.revokeObjectURL(url); setNotice('Editable project downloaded'); }
   async function importFile(f: File) {
