@@ -46,7 +46,7 @@ describe("studio project rules", () => {
     expect(parsed.project.format).toBe("landscape");
   });
   it("keeps the TV campaign parent-facing rather than using mathematical visual models", () => {
-    expect(tvMarketingLoopProject.legacy?.campaignAudience).toBe('parents');
+    expect(tvMarketingLoopProject.legacy?.['campaignAudience']).toBe('parents');
     expect(tvMarketingLoopProject.scenes.every(scene => scene.visual === 'none')).toBe(true);
   });
 });
