@@ -1,5 +1,5 @@
 # Reference direction rebuild
-- [ ] Adapt the notebook TV campaign to the final uploaded narration, extend scenes and verify timing, playback and export.
+- [x] Adapt the notebook TV campaign to the final uploaded narration: 12 scenes totaling 81.514667 seconds; verify playback, restored narration and complete audio-inclusive WebM download.
 - [x] Rebuild the TV Marketing Loop as a parent-focused promotion; verify every scene and the QR invitation.
 - [x] Redesign the curriculum planner with chapter navigation, focused video lists, and a useful preview; verify opening lessons.
 - [x] Switch shared math artwork to the second reference: open diagrams, bounded geometry, readable annotations and staged reveals; verify editable models, library tangent scenes and a downloaded frame.
