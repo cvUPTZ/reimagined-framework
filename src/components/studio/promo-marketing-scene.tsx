@@ -151,10 +151,9 @@ export function PromoMarketingScene({ layout, project, scene, width, height, ela
     {isCta && <>
       {text}
       <g transform="translate(80 110) rotate(-2 140 150)" opacity={at(t, .4, .6)}>
-        <rect x="-4" y="8" width="288" height="300" rx="6" fill="var(--ink)" opacity=".12"/>
-        <rect width="280" height="300" rx="6" fill="var(--qr-paper)"/>
+        <rect x="-4" y="8" width="288" height="272" rx="6" fill="var(--ink)" opacity=".12"/>
+        <rect width="280" height="272" rx="6" fill="var(--qr-paper)"/>
         <image href={TELEGRAM_QR_SRC} x="24" y="20" width="232" height="232"/>
-        <text x="140" y="282" textAnchor="middle" fontFamily="Space Grotesk" fontSize="19" fontWeight="700" fill="var(--ink-blue)">{project.qrBotHandle ?? TELEGRAM_BOT_HANDLE}</text>
         <rect x="105" y="-12" width="70" height="24" fill="var(--ink-orange)" opacity=".35"/>
       </g>
       <Ink filter={wob} color="var(--ink-blue)" w={4} p={at(t, 1.6, .8)} d="M560 360c-60 30-120 20-170 -10m14 -4l-14 4 6 14"/>
