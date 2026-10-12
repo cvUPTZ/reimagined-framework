@@ -41,6 +41,72 @@ export type Database = {
         }
         Relationships: []
       }
+      tiktok_oauth_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tiktok_publish_jobs: {
+        Row: {
+          chunk_count: number
+          chunk_size: number
+          created_at: string
+          fail_reason: string | null
+          id: string
+          project_name: string
+          publish_id: string | null
+          status: string
+          updated_at: string
+          upload_url_ciphertext: string | null
+          uploaded_bytes: number
+          user_id: string
+          video_size: number
+        }
+        Insert: {
+          chunk_count: number
+          chunk_size: number
+          created_at?: string
+          fail_reason?: string | null
+          id?: string
+          project_name: string
+          publish_id?: string | null
+          status?: string
+          updated_at?: string
+          upload_url_ciphertext?: string | null
+          uploaded_bytes?: number
+          user_id: string
+          video_size: number
+        }
+        Update: {
+          chunk_count?: number
+          chunk_size?: number
+          created_at?: string
+          fail_reason?: string | null
+          id?: string
+          project_name?: string
+          publish_id?: string | null
+          status?: string
+          updated_at?: string
+          upload_url_ciphertext?: string | null
+          uploaded_bytes?: number
+          user_id?: string
+          video_size?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
