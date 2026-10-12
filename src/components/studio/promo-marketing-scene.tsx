@@ -44,13 +44,13 @@ export function PromoMarketingScene({ layout, project, scene, width, height, ela
       <rect width="960" height="540" fill={`url(#parent-shade-${filterId})`}/>
     </>}
     <text x="48" y="52" fontFamily="Space Grotesk" fontSize="23" fontWeight="700" fill="var(--foreground)">QED<tspan fill="var(--primary)"> ∎</tspan></text>
-    <text x="912" y="52" textAnchor="end" fontSize="17" fill="var(--primary)" direction="rtl">للأولياء الذين يريدون فهماً أوضح لأبنائهم</text>
+    <text x="912" y="52" textAnchor="start" fontSize="17" fill="var(--primary)" direction="rtl">للأولياء الذين يريدون فهماً أوضح لأبنائهم</text>
     <g opacity={progress} transform={`translate(0 ${12 * (1 - progress)})`}>
-      <text x="906" y={isMethod ? 140 : 185} textAnchor="end" fontSize={isMethod ? 42 : 46} fontWeight="700" fill="var(--foreground)" direction="rtl">
+      <text x="906" y={isMethod ? 140 : 185} textAnchor="start" fontSize={isMethod ? 42 : 46} fontWeight="700" fill="var(--foreground)" direction="rtl">
         {headline.map((line, index) => <tspan key={index} x="906" dy={index ? 61 : 0}>{line}</tspan>)}
       </text>
-      {(supporting[layout] ?? []).map((line, index) => <text key={line} x="906" y={(isMethod ? 235 : 298) + index * 30} textAnchor="end" fontSize="20" fill="var(--foreground)" opacity=".8" direction="rtl">{line}</text>)}
-      {layout === 'curriculum-mastery' && <text x="906" y="378" textAnchor="end" fontFamily="Space Grotesk" fontSize="30" fontWeight="700" fill="var(--gold)">BEM · BAC</text>}
+      {(supporting[layout] ?? []).map((line, index) => <text key={line} x="906" y={(isMethod ? 235 : 298) + index * 30} textAnchor="start" fontSize="20" fill="var(--foreground)" opacity=".8" direction="rtl">{line}</text>)}
+      {layout === 'curriculum-mastery' && <text x="906" y="378" textAnchor="start" fontFamily="Space Grotesk" fontSize="30" fontWeight="700" fill="var(--gold)">BEM · BAC</text>}
       {isMethod && <g>
         {[['يرى الفكرة', 'فيديوهات بصرية'], ['يفهم الخطأ', 'شرح الأخطاء الشائعة'], ['يتدرّب على الحل', 'تمارين خطوة بخطوة']].map(([title, subtitle], index) => {
           const x = 770 - index * 290;
@@ -72,6 +72,6 @@ export function PromoMarketingScene({ layout, project, scene, width, height, ela
     </g>
     <path d="M48 482H912" stroke="var(--border-strong)"/>
     <text x="48" y="516" fontFamily="Space Grotesk" fontSize="15" fill="var(--muted-foreground)">BEM / BAC</text>
-    <text x="912" y="516" textAnchor="end" fontSize="19" fontWeight="700" fill="var(--primary)" direction="rtl">{isCta ? 'QED — الرياضيات بصورة أوضح' : 'اكتشف QED مع ابنك · امسح الرمز في نهاية العرض'}</text>
+    <text x="912" y="516" textAnchor="start" fontSize="19" fontWeight="700" fill="var(--primary)" direction="rtl">{isCta ? 'QED — الرياضيات بصورة أوضح' : 'اكتشف QED مع ابنك · امسح الرمز في نهاية العرض'}</text>
   </g>;
 }
