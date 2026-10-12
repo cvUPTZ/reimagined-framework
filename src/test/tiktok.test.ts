@@ -38,16 +38,16 @@ describe('TikTok Integration Rules & Publishing Plan', () => {
     expect(single7.chunkCount).toBe(1);
     expect(chunkEnd(0, 7 * 1024 * 1024, single7.chunkSize, single7.chunkCount)).toBe(7 * 1024 * 1024);
 
-    // 12 MB video (multi-chunk: floor(12 / 5) = 2 chunks; trailing bytes merged into final chunk per TikTok specification)
-    const plan12 = uploadPlan(12 * 1024 * 1024);
-    expect(plan12.chunkSize).toBe(5 * 1024 * 1024);
-    expect(plan12.chunkCount).toBe(2);
+    // 25 MB video (multi-chunk: floor(25 / 10) = 2 chunks; trailing 5MB merged into final chunk per TikTok specification)
+    const plan25 = uploadPlan(25 * 1024 * 1024);
+    expect(plan25.chunkSize).toBe(10 * 1024 * 1024);
+    expect(plan25.chunkCount).toBe(2);
 
-    const end0 = chunkEnd(0, 12 * 1024 * 1024, plan12.chunkSize, plan12.chunkCount);
-    expect(end0).toBe(5 * 1024 * 1024);
+    const end0 = chunkEnd(0, 25 * 1024 * 1024, plan25.chunkSize, plan25.chunkCount);
+    expect(end0).toBe(10 * 1024 * 1024);
 
-    const end1 = chunkEnd(5 * 1024 * 1024, 12 * 1024 * 1024, plan12.chunkSize, plan12.chunkCount);
-    expect(end1).toBe(12 * 1024 * 1024);
+    const end1 = chunkEnd(10 * 1024 * 1024, 25 * 1024 * 1024, plan25.chunkSize, plan25.chunkCount);
+    expect(end1).toBe(25 * 1024 * 1024);
   });
 
   it('validates compliant post payloads', () => {
