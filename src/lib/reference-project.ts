@@ -451,6 +451,7 @@ export const tvMarketingLoopProject: StudioProject = {
   remediation: '',
   cta: 'اكتشف QED مع ابنك عبر تيليجرام',
   qrWatermark: false,
+  mediaName: 'qed-parents-voice.mp3',
   legacy: { campaignAudience: 'parents', campaignVersion: 2 },
   brandKit: {
     name: 'QED Parents TV',
