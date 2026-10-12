@@ -21,3 +21,5 @@
 - Bundle artwork fonts locally and embed them in exported SVG frames; self-contained image decoding cannot inherit page web fonts.
 - Build curriculum planner selections from the canonical legacy entry loader and render previews with ScenePreview so opening a video retains its complete editable lesson.
 - Render parent TV promotions from editable scene text with inline photo/QR assets so preview and isolated exported SVG frames retain the same campaign artwork.
+- Restore bundled campaign narration through the shared campaign-audio resolver on load and browser recovery so playback and downloads retain the same recording.
+- Render narration-matched notebook campaigns through SyncedPromoScene using scene-local time so reveals remain deterministic during playback, scrubbing, and export.

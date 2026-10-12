@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { defaultProject, duplicateScene, moveScene, totalDuration } from "@/lib/studio";
 import { tvMarketingLoopProject } from "@/lib/reference-project";
 import { parseProjectFile, projectFile } from "@/lib/project-file";
+import { campaignAudio } from '@/lib/campaign-audio';
 
 describe("studio project rules", () => {
   it("calculates the concrete demo duration", () => {
@@ -23,30 +24,32 @@ describe("studio project rules", () => {
 
   it("validates TV Marketing Loop project structure, promo layouts and round-tripping", () => {
     expect(tvMarketingLoopProject.format).toBe("landscape");
-    expect(tvMarketingLoopProject.scenes).toHaveLength(8);
-    expect(totalDuration(tvMarketingLoopProject.scenes)).toBe(78);
+    expect(tvMarketingLoopProject.scenes).toHaveLength(12);
+    expect(totalDuration(tvMarketingLoopProject.scenes)).toBeCloseTo(81.514667, 6);
     
     
     // Contains custom marketing promo layouts on all scenes
     const layouts = tvMarketingLoopProject.scenes.map(s => s.legacy?.['promoLayout']);
     expect(layouts).toEqual([
-      'problem-hook',
-      'before-after',
-      'parents-pitch',
-      'students-pitch',
-      'four-pillars',
-      'curriculum-mastery',
-      'tv-grand-cta',
-      'loop-outro',
+      'synced-grade', 'synced-compare', 'synced-fraction', 'synced-other',
+      'synced-roots', 'synced-exercises', 'synced-diagnosis', 'synced-skills',
+      'synced-cause', 'synced-path', 'synced-identity', 'synced-cta',
     ]);
 
     // Round-trips through project file format without warnings or errors
     const parsed = parseProjectFile(projectFile(tvMarketingLoopProject));
-    expect(parsed.project.scenes).toHaveLength(8);
+    expect(parsed.project.scenes).toHaveLength(12);
     expect(parsed.project.format).toBe("landscape");
   });
   it("keeps the TV campaign parent-facing rather than using mathematical visual models", () => {
     expect(tvMarketingLoopProject.legacy?.['campaignAudience']).toBe('parents');
     expect(tvMarketingLoopProject.scenes.every(scene => scene.visual === 'none')).toBe(true);
+  });
+  it('restores the final supplied narration after editable project round-tripping', () => {
+    const project = parseProjectFile(projectFile(tvMarketingLoopProject)).project;
+    expect(campaignAudio(project)?.name).toBe('QED_final_synced_audio.mp3');
+    expect(campaignAudio(project)?.url).toBe(tvMarketingLoopProject.audioTrack?.url);
+    expect(project.audioTrack?.volume).toBe(100);
+    expect(campaignAudio({ ...project, mediaName: 'other-upload.mp3' })).toBeUndefined();
   });
 });

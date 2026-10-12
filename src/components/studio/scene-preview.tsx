@@ -6,6 +6,7 @@ import { OpenMathDiagram } from './open-math-diagram';
 import { hasLegacyRenderer, renderLegacyVisual, type VisualParams, type VisualStage } from '@/lib/legacy-visuals';
 import { TELEGRAM_QR_SRC, TELEGRAM_BOT_HANDLE, TELEGRAM_BOT_URL } from '@/assets/telegram-qr';
 import { PromoMarketingScene } from './promo-marketing-scene';
+import { SyncedPromoScene } from './synced-promo-scene';
 
 /**
  * Intelligent text-wrapping helper that respects word boundaries, punctuation,
@@ -205,7 +206,9 @@ export function ScenePreview({
         style={{ transformOrigin: `${width / 2}px ${height / 2}px` }}
         {...(motion.wipeProgress < 1 ? { clipPath: `url(#wipe-${id})` } : {})}
       >
-        {promoLayout ? (
+        {promoLayout.startsWith('synced-') ? (
+          <SyncedPromoScene project={project} scene={scene} width={width} height={height} elapsed={animTime}/>
+        ) : promoLayout ? (
           <PromoMarketingScene
             layout={promoLayout}
             project={project}
@@ -410,7 +413,7 @@ export function ScenePreview({
       {safeZones && <rect x={width * 0.08} y={height * 0.07} width={width * 0.84} height={height * 0.81} className="art-safe" />}
 
       {/* Footnote Bar */}
-      {(scene.showFootnote ?? true) && (
+      {(scene.showFootnote ?? !promoLayout.startsWith('synced-')) && (
         <>
           <text x="34" y={height - 30} className="art-footnote" style={{ unicodeBidi: "plaintext" }}>
             {footnote}
