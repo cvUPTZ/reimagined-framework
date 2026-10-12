@@ -24,11 +24,13 @@ import {
   PlusCircle,
   ChevronDown,
   ChevronUp,
+  Share2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScenePreview } from './scene-preview';
 import { legacyToProject, type LegacyEntry, type LegacySource } from '@/lib/legacy-library';
 import { totalDuration, type StudioProject } from '@/lib/studio';
+import { TikTokPublishDialog } from './tiktok-publish-dialog';
 import {
   CURRICULUM_CHAPTERS,
   STAGES,
@@ -67,6 +69,7 @@ export function CurriculumPlanner({
   const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null);
   const [showConceptGuide, setShowConceptGuide] = useState<boolean>(true);
   const [prodFilter, setProdFilter] = useState<'all' | 'missing' | 'partial' | 'complete'>('all');
+  const [tiktokProject, setTiktokProject] = useState<StudioProject | null>(null);
 
   // Calendar State
   const [calMonth, setCalMonth] = useState<Date>(() => new Date());
@@ -727,10 +730,23 @@ export function CurriculumPlanner({
                   })()}
                 </div>
 
-                <Button className="planner-open" onClick={() => openProject()}>
-                  فتح في المحرر
-                  <ArrowLeft size={16} />
-                </Button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', marginTop: 'auto' }}>
+                  <Button className="planner-open" onClick={() => openProject()}>
+                    فتح في المحرر
+                    <ArrowLeft size={16} />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="planner-open"
+                    onClick={() => {
+                      const proj = legacyToProject(selected);
+                      if (proj) setTiktokProject(proj);
+                    }}
+                  >
+                    <Share2 size={15} />
+                    نشر على تيك توك
+                  </Button>
+                </div>
               </>
             ) : (
               <div className="planner-detail-empty">
@@ -1123,6 +1139,15 @@ export function CurriculumPlanner({
             </div>
           </div>
         </div>
+      )}
+      {tiktokProject && (
+        <TikTokPublishDialog
+          open={Boolean(tiktokProject)}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setTiktokProject(null);
+          }}
+          project={tiktokProject}
+        />
       )}
     </div>
   );

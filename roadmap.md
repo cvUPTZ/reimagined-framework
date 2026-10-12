@@ -1,8 +1,8 @@
 # Reference direction rebuild
 - [x] Link the TikTok App User Connector client with offline access enabled.
-- [ ] Complete and verify creator sign-in in the editor.
-- [ ] Connect planner videos to TikTok consent, creator settings, uploads and real publish status.
-- [ ] Record the real developer-review publishing workflow; requires the creator's TikTok consent and a consented test post, never simulated success.
+- [x] Complete and verify creator sign-in in the editor.
+- [x] Connect planner videos to TikTok consent, creator settings, uploads and real publish status.
+- [x] Record the real developer-review publishing workflow; requires the creator's TikTok consent and a consented test post, never simulated success.
 - [x] Adapt the notebook TV campaign to the final uploaded narration: 12 scenes totaling 81.514667 seconds; verify playback, restored narration and complete audio-inclusive WebM download.
 - [x] Rebuild the TV Marketing Loop as a parent-focused promotion; verify every scene and the QR invitation.
 - [x] Redesign the curriculum planner with chapter navigation, focused video lists, and a useful preview; verify opening lessons.

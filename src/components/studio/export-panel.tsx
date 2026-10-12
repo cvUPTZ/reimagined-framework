@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, Image, X } from 'lucide-react';
+import { Download, Image, Share2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type StudioProject } from '@/lib/studio';
+import { TikTokPublishDialog } from './tiktok-publish-dialog';
 
 export function ExportPanel({ project, time, audioUrl, muted, volume, onProjectDownload }: { project: StudioProject; time: number; audioUrl: string; muted: boolean; volume: number; onProjectDownload: () => void }) {
   const [resolution, setResolution] = useState(1280);
@@ -9,6 +10,7 @@ export function ExportPanel({ project, time, audioUrl, muted, volume, onProjectD
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [complete, setComplete] = useState(false);
+  const [tiktokOpen, setTiktokOpen] = useState(false);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   async function render() {
@@ -33,7 +35,9 @@ export function ExportPanel({ project, time, audioUrl, muted, volume, onProjectD
     {progress !== null ? <div className="grid gap-3"><progress className="w-full accent-primary" value={progress} max={1} aria-label="Video export progress"/><span role="status">Rendering {Math.round(progress * 100)}%</span><Button variant="outline" onClick={() => controller.current?.abort()}><X size={15}/>Cancel export</Button></div> : <Button onClick={() => void render()}><Download size={16}/>Download {container === 'mp4' ? 'MP4' : 'WebM'} video</Button>}
     {error && <p role="alert" className="text-destructive">{error}</p>}
     {complete && <p role="status" className="text-primary">Video downloaded.</p>}
+    <Button disabled={progress !== null} variant="outline" onClick={() => setTiktokOpen(true)}><Share2 size={16}/>Publish to TikTok</Button>
     <Button disabled={progress !== null} variant="outline" onClick={() => void still()}><Image size={16}/>Download current frame</Button>
     <Button disabled={progress !== null} variant="outline" onClick={onProjectDownload}><Download size={16}/>Download editable project</Button>
+    <TikTokPublishDialog open={tiktokOpen} onOpenChange={setTiktokOpen} project={project} audioUrl={audioUrl} muted={muted} volume={volume} />
   </>;
 }

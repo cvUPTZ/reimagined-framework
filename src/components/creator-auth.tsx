@@ -7,7 +7,7 @@ import { lovable } from '@/integrations/lovable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { LogIn, LogOut, Loader2 } from 'lucide-react';
+import { LogIn, LogOut, Loader2, User as UserIcon } from 'lucide-react';
 
 const CreatorContext = createContext<{ user: User | null; ready: boolean }>({ user: null, ready: false });
 export const useCreator = () => useContext(CreatorContext);
@@ -80,8 +80,12 @@ export function CreatorAccount({ compact = false }: { compact?: boolean }) {
     finally { setBusy(false); }
   }
   return <>
-    <Button variant="ghost" size={compact ? 'icon' : 'default'} disabled={!ready || busy} title={user ? 'Creator account' : 'Sign in'} aria-label={user ? 'Creator account' : 'Sign in'} onClick={() => { setOpen(true); setMessage(''); }}>
-      <LogIn size={16} />{!compact && (user ? 'Creator account' : 'Sign in')}
+    <Button variant="ghost" size={compact ? 'icon' : 'sm'} disabled={!ready || busy} title={user ? (user.email ?? 'Creator account') : 'Sign in'} aria-label={user ? (user.email ?? 'Creator account') : 'Sign in'} onClick={() => { setOpen(true); setMessage(''); }} className={compact && user ? 'rounded-full p-0 h-7 w-7' : 'gap-1.5'}>
+      {user ? (
+        compact ? <span className="user-avatar" style={{ margin: 0, width: 28, height: 28, fontSize: 11 }}>{(user.email?.[0] ?? 'C').toUpperCase()}</span> : <><UserIcon size={14}/><span className="truncate max-w-[130px] text-xs">{user.email?.split('@')[0]}</span></>
+      ) : (
+        <><LogIn size={15}/>{!compact && <span className="text-xs">Sign in</span>}</>
+      )}
     </Button>
     <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-w-sm rounded-lg">
       <DialogTitle>{user ? 'Creator account' : mode === 'signup' ? 'Join QED Studio' : 'Sign in to QED Studio'}</DialogTitle>
