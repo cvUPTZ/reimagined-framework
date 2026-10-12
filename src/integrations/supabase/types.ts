@@ -41,6 +41,24 @@ export type Database = {
         }
         Relationships: []
       }
+      tiktok_oauth_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tiktok_publish_jobs: {
         Row: {
           chunk_count: number

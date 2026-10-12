@@ -15,6 +15,13 @@
       "when": 1791802653092,
       "tag": "0001_tiktok_publish_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791802679153,
+      "tag": "0002_tiktok_oauth_attempts",
+      "breakpoints": true
     }
   ]
 }
