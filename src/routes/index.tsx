@@ -455,7 +455,7 @@ function Studio() {
           setPanel(null);
         }}>
           <div className="template-art" style={{ width: 140, flexShrink: 0 }}>
-            <ScenePreview project={tvMarketingLoopProject} scene={tvMarketingLoopProject.scenes[0] ?? referenceProject.scenes[0]} miniature/>
+            {tvMarketingLoopProject.scenes[0] && <ScenePreview project={tvMarketingLoopProject} scene={tvMarketingLoopProject.scenes[0]} miniature/>}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, textAlign: 'start' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

@@ -20,3 +20,4 @@
 - Derive clip geometry and edits through pure timeline helpers; duration-proportional coordinates keep ruler, playhead, trimming, and export synchronized.
 - Bundle artwork fonts locally and embed them in exported SVG frames; self-contained image decoding cannot inherit page web fonts.
 - Build curriculum planner selections from the canonical legacy entry loader and render previews with ScenePreview so opening a video retains its complete editable lesson.
+- Render parent TV promotions from editable scene text with inline photo/QR assets so preview and isolated exported SVG frames retain the same campaign artwork.
