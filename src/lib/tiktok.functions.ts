@@ -100,8 +100,13 @@ export const uploadTikTokChunk = createServerFn({ method: 'POST' }).middleware([
     const end = chunkEnd(data.start, job.video_size, job.chunk_size, job.chunk_count);
     if (data.file.size !== end - data.start) throw new Error('Video chunk size does not match.');
     const { decryptConnectionKey } = await import('@/server/connection-key-crypto');
-    const res = await fetch(decryptConnectionKey(job.upload_url_ciphertext), { method: 'PUT', redirect: 'error', headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(data.file.size), 'Content-Range': `bytes ${data.start}-${end - 1}/${job.video_size}` }, body: data.file, signal: AbortSignal.timeout(55000) });
-    if (!res.ok) throw new Error('TikTok video transfer failed. Start a new upload.');
+    const uploadUrl = decryptConnectionKey(job.upload_url_ciphertext);
+    const res = await fetch(uploadUrl, { method: 'PUT', redirect: 'follow', headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(data.file.size), 'Content-Range': `bytes ${data.start}-${end - 1}/${job.video_size}` }, body: data.file, signal: AbortSignal.timeout(55000) });
+    if (!res.ok && res.status !== 308) {
+      const errText = await res.text().catch(() => '');
+      console.error(`TikTok chunk upload failed (${res.status}):`, errText);
+      throw new Error(`TikTok video transfer failed (HTTP ${res.status}${errText ? `: ${errText}` : ''}). Start a new upload.`);
+    }
     const { error: updateError } = await supabaseAdmin.from('tiktok_publish_jobs').update({ uploaded_bytes: end, status: end === job.video_size ? 'PROCESSING' : 'UPLOADING', upload_url_ciphertext: end === job.video_size ? null : job.upload_url_ciphertext, updated_at: new Date().toISOString() }).eq('id', job.id).eq('user_id', context.userId);
     if (updateError) throw new Error('Could not save upload progress.');
     return { uploadedBytes: end };
