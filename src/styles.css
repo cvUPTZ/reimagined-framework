@@ -69,6 +69,14 @@
   --blue: oklch(.73 .13 260);
   --gold: oklch(.83 .14 95);
   --qr-paper: oklch(1 0 0);
+  --paper: oklch(0.96 0.015 85);
+  --paper-sheet: oklch(0.99 0.008 90);
+  --paper-line: oklch(0.86 0.04 265);
+  --paper-margin: oklch(0.77 0.09 20);
+  --ink: oklch(0.32 0.04 275);
+  --ink-orange: oklch(0.64 0.19 42);
+  --ink-blue: oklch(0.5 0.19 268);
+  --ink-green: oklch(0.55 0.14 148);
   --violet: oklch(.75 .14 320);
   --selected-surface: oklch(.23 .012 160);
   --stage-shadow: 0 12px 40px oklch(.05 0 0 / .25);
