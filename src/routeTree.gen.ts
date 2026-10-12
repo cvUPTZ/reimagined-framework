@@ -10,33 +10,44 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicOauthTiktokReturnRouteImport } from './routes/api/public/oauth/tiktok/return'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicOauthTiktokReturnRoute =
+  ApiPublicOauthTiktokReturnRouteImport.update({
+    id: '/api/public/oauth/tiktok/return',
+    path: '/api/public/oauth/tiktok/return',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/oauth/tiktok/return': typeof ApiPublicOauthTiktokReturnRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/oauth/tiktok/return': typeof ApiPublicOauthTiktokReturnRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/oauth/tiktok/return': typeof ApiPublicOauthTiktokReturnRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/public/oauth/tiktok/return'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/public/oauth/tiktok/return'
+  id: '__root__' | '/' | '/api/public/oauth/tiktok/return'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicOauthTiktokReturnRoute: typeof ApiPublicOauthTiktokReturnRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +59,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/oauth/tiktok/return': {
+      id: '/api/public/oauth/tiktok/return'
+      path: '/api/public/oauth/tiktok/return'
+      fullPath: '/api/public/oauth/tiktok/return'
+      preLoaderRoute: typeof ApiPublicOauthTiktokReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicOauthTiktokReturnRoute: ApiPublicOauthTiktokReturnRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
