@@ -8,6 +8,13 @@
       "when": 1791802025650,
       "tag": "0000_creator_tiktok_connections",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791802653092,
+      "tag": "0001_tiktok_publish_jobs",
+      "breakpoints": true
     }
   ]
 }
