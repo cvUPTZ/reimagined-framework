@@ -7,6 +7,8 @@ import { hasLegacyRenderer, renderLegacyVisual, type VisualParams, type VisualSt
 import { TELEGRAM_QR_SRC, TELEGRAM_BOT_HANDLE, TELEGRAM_BOT_URL } from '@/assets/telegram-qr';
 import { PromoMarketingScene } from './promo-marketing-scene';
 import { SyncedPromoScene } from './synced-promo-scene';
+import { hasArabic, phaseLabel, prettifyMath, wrapFormula } from '@/lib/math-text';
+import { mapLegacyModel } from '@/lib/legacy-library';
 
 /**
  * Intelligent text-wrapping helper that respects word boundaries, punctuation,
@@ -18,8 +20,9 @@ export function wrapSceneText(text: string, maxChars = 32): string[] {
   const result: string[] = [];
 
   for (const rawLine of rawLines) {
-    const trimmed = rawLine.trim();
+    const trimmed = prettifyMath(rawLine.trim());
     if (!trimmed) continue;
+    if (!hasArabic(trimmed)) { result.push(...wrapFormula(trimmed, maxChars)); continue; }
     if (trimmed.length <= maxChars) {
       result.push(trimmed);
       continue;
@@ -91,7 +94,9 @@ export function ScenePreview({
   const textAlign = scene.textAlign ?? 'center';
   const lineHeight = scene.lineHeight ?? 1.25;
   const textColor = scene.textColor ?? 'default';
-  const visual = scene.visual ?? 'curve';
+  // A legacy subject with no matching drawing shows none, instead of an unrelated stored fallback.
+  const legacyName = typeof scene.legacy?.['visualModel'] === 'string' ? (scene.legacy['visualModel'] as string) : '';
+  const visual = legacyName && !hasLegacyRenderer(legacyName) && mapLegacyModel(legacyName) === 'none' ? 'none' : (scene.visual ?? 'curve');
 
   // Dynamic vertical layout: when lines increase, push title slightly up and visual card down
   // ensuring zero overlap between Arabic title text and visual intuition cards
@@ -131,7 +136,7 @@ export function ScenePreview({
       : (ambientSec * 0.85) % (scene.duration || 5);
 
   const legacyNode = legacyModel && hasLegacyRenderer(legacyModel)
-    ? renderLegacyVisual({ model: legacyModel, params: scene.legacy?.['visualParams'] as VisualParams | undefined, stage: scene.legacy?.['visualStage'] as VisualStage | undefined, elapsed: animTime, duration: scene.duration })
+    ? renderLegacyVisual({ model: legacyModel, diagram: scene.legacy?.['solveDiagram'] as { sh?: string[]; cap?: string } | null | undefined, params: scene.legacy?.['visualParams'] as VisualParams | undefined, stage: scene.legacy?.['visualStage'] as VisualStage | undefined, elapsed: animTime, duration: scene.duration })
     : null;
 
   const motion = sceneMotion(scene, isScrubbingOrPlaying ? elapsed : undefined);
@@ -151,7 +156,7 @@ export function ScenePreview({
       aria-label={miniature ? scene.title : 'Math video preview'}
     >
       <defs>
-        {/* Luminous 3B1B Bloom Filters */}
+        {/* Glow filters */}
         <filter id={`neonGlow-${id}`} x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur stdDeviation="3.5" result="coloredBlur" />
           <feMerge>
@@ -223,7 +228,7 @@ export function ScenePreview({
             {/* Phase Header */}
             {(scene.showPhase ?? true) && (
               <text x={textX} y={baseTitleY - 48} textAnchor={textAnchor} className="art-phase" style={{ unicodeBidi: "plaintext" }}>
-                {phaseOf(scene).toUpperCase()}
+                {isArabic ? phaseLabel(phaseOf(scene)) : phaseOf(scene).toUpperCase()}
               </text>
             )}
 
@@ -248,7 +253,7 @@ export function ScenePreview({
           </text>
         )}
 
-        {/* Sophisticated 3Blue1Brown Math Models */}
+        {/* Lesson diagram */}
         {(scene.showVisual ?? true) && legacyNode && (
           <g transform={`translate(${width / 2 - 195},${visualY - 20}) scale(${visualScale})`}>{legacyNode}</g>
         )}
@@ -267,13 +272,13 @@ export function ScenePreview({
           const isDupOfBody = lines.some(l => l.trim().toLowerCase() === expr.toLowerCase());
           if (isDupOfBody) return null;
           return (
-            <text x={width / 2} y={expressionY + (visual === 'tangent' || visual === 'integral' ? 26 : 0)} textAnchor="middle" className="art-expression" fill="var(--foreground)">
-              {expr}
+            <text x={width / 2} y={expressionY + (visual === 'tangent' || visual === 'integral' ? 26 : 0)} textAnchor="middle" className="art-expression" fill="var(--foreground)" direction="ltr">
+              {prettifyMath(expr)}
             </text>
           );
         })()}
 
-        {/* 3B1B Final Scene / CTA Big Central Telegram QR Code Card */}
+        {/* End card QR */}
         {((scene.showQrCta ?? (scene.kind === 'cta' || scene.phase === 'End card')) && (
           <g transform={`translate(${width / 2}, ${portrait ? 540 : 285})`} className="art-qr-cta-card">
             {/* Luminous Glow Frame */}
