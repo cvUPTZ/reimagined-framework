@@ -18,7 +18,14 @@ import {
   LogOut,
   Shield,
   HelpCircle,
+  Sparkles,
+  Terminal,
+  Copy,
+  Check,
+  Download,
+  Code,
 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCreator, CreatorAccount } from '@/components/creator-auth';
 import {
   startTikTokConnect,
@@ -80,8 +87,23 @@ export function TikTokPublishDialog({
   const [posts, setPosts] = useState<Array<{ id: string; project_name: string; status: string; created_at: string }>>([]);
   const [refreshingPosts, setRefreshingPosts] = useState(false);
 
+  // Userscript & CLI Automation State
+  const [copiedPayload, setCopiedPayload] = useState(false);
+  const [copiedPlaywright, setCopiedPlaywright] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
+
   const duration = totalDuration(project.scenes);
   const pollTimerRef = useRef<number | null>(null);
+
+  const qedPayload = {
+    qed: true,
+    title: project.name,
+    caption: `${project.topic ? `${project.topic}\n` : ''}${project.mistake ? `الفخ الشائع: ${project.mistake}\n` : ''}${project.remediation ? `الحل: ${project.remediation}` : ''}`.trim(),
+    hashtags: '#math #bac2026 #qed #education #bac',
+    duration: Math.round(duration),
+  };
+
+  const playwrightCliCmd = `npm run tiktok:post -- --video "./${project.name}.mp4" --caption "${project.name}" --tags "#math #bac2026 #qed"`;
 
   useEffect(() => {
     setTitle(project.name);
@@ -308,7 +330,154 @@ export function TikTokPublishDialog({
           Publish math stories directly to TikTok with authentic creator consent and verified status.
         </DialogDescription>
 
-        {!user ? (
+        <Tabs defaultValue="violentmonkey" className="w-full mt-2">
+          <TabsList className="grid grid-cols-3 mb-4">
+            <TabsTrigger value="violentmonkey" className="text-xs gap-1.5 font-medium">
+              <Sparkles size={13} className="text-amber-500" />
+              Violentmonkey
+            </TabsTrigger>
+            <TabsTrigger value="playwright" className="text-xs gap-1.5 font-medium">
+              <Terminal size={13} className="text-blue-500" />
+              Playwright CLI
+            </TabsTrigger>
+            <TabsTrigger value="api" className="text-xs gap-1.5 font-medium">
+              <Share2 size={13} className="text-primary" />
+              API Officielle
+            </TabsTrigger>
+          </TabsList>
+
+          {/* TAB 1: VIOLENTMONKEY USER SCRIPT */}
+          <TabsContent value="violentmonkey" className="space-y-4">
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs leading-relaxed text-amber-200">
+              <div className="flex items-center gap-2 font-semibold text-amber-400 mb-1">
+                <Sparkles size={14} />
+                Publication Directe dans votre Navigateur (Zéro attente)
+              </div>
+              Pendant que l'équipe TikTok examine notre demande d'API, publiez automatiquement depuis votre compte habituel sans blocage, captcha ou restriction.
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-3 border border-border rounded-lg bg-card/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-[11px] font-bold">1</span>
+                    Installer le Userscript QED
+                  </span>
+                  <a
+                    href="/userscripts/tiktok-qed-autopost.user.js"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Download size={12} />
+                    Installer (.user.js)
+                  </a>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Nécessite l'extension <b>Violentmonkey</b> ou <b>Tampermonkey</b> sur Chrome, Brave, Edge ou Firefox. Le script affiche un assistant HUD sur la page d'upload de TikTok.
+                </p>
+              </div>
+
+              <div className="p-3 border border-border rounded-lg bg-card/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-[11px] font-bold">2</span>
+                    Copier le Payload de la Vidéo
+                  </span>
+                  <Button
+                    size="sm"
+                    variant={copiedPayload ? "secondary" : "outline"}
+                    className="h-7 text-xs gap-1.5"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(JSON.stringify(qedPayload, null, 2));
+                      setCopiedPayload(true);
+                      setTimeout(() => setCopiedPayload(false), 2000);
+                    }}
+                  >
+                    {copiedPayload ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
+                    {copiedPayload ? 'Payload copié !' : 'Copier le Payload'}
+                  </Button>
+                </div>
+                <div className="bg-background/90 p-2 rounded text-[11px] font-mono border border-border/80 text-muted-foreground overflow-x-auto">
+                  <div><b>Titre:</b> {qedPayload.title}</div>
+                  <div><b>Hashtags:</b> {qedPayload.hashtags}</div>
+                </div>
+              </div>
+
+              <div className="p-3 border border-border rounded-lg bg-card/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-[11px] font-bold">3</span>
+                    Ouvrir TikTok Creator Studio & Publier
+                  </span>
+                  <a
+                    href="https://www.tiktok.com/creator-center/upload"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-primary text-primary-foreground font-semibold text-xs hover:opacity-90"
+                  >
+                    <ExternalLink size={13} />
+                    Ouvrir TikTok Studio
+                  </a>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Glissez votre fichier MP4 téléchargé dans TikTok. Dans le HUD flottant QED en bas à droite, cliquez sur <b>« Charger depuis le Presse-papiers »</b> : le titre, les tags et la publication s'exécutent automatiquement !
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* TAB 2: PLAYWRIGHT CLI */}
+          <TabsContent value="playwright" className="space-y-4">
+            <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-xs leading-relaxed text-blue-200">
+              <div className="flex items-center gap-2 font-semibold text-blue-400 mb-1">
+                <Terminal size={14} />
+                Publication Automatisée via Playwright CLI
+              </div>
+              Lancez le script autonome pour téléverser votre vidéo MP4 exportée, remplir la description et cliquer sur Publier en arrière-plan.
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold block mb-1">Commande à exécuter dans votre terminal :</label>
+                <div className="relative">
+                  <pre className="p-3 bg-background border border-border rounded text-xs font-mono overflow-x-auto pr-16 text-foreground">
+                    {playwrightCliCmd}
+                  </pre>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2 h-7 px-2 text-xs gap-1"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(playwrightCliCmd);
+                      setCopiedPlaywright(true);
+                      setTimeout(() => setCopiedPlaywright(false), 2000);
+                    }}
+                  >
+                    {copiedPlaywright ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
+                    {copiedPlaywright ? 'Copié' : 'Copier'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-muted-foreground space-y-1 bg-secondary/30 p-2.5 rounded border border-border">
+                <p>💡 <b>Astuce 1er lancement :</b> Lors de la 1ère exécution, Playwright ouvrira une fenêtre Chrome pour vous connecter une seule fois. Votre session est sauvegardée dans <code>.tiktok-browser-profile/</code> pour toutes les publications futures.</p>
+                <p>⚙️ <b>Installation :</b> Assurez-vous d'avoir exécuté <code>npm run tiktok:install-browsers</code>.</p>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* TAB 3: OFFICIAL API */}
+          <TabsContent value="api" className="space-y-4">
+            <div className="p-3 bg-secondary/60 border border-border rounded-lg text-xs leading-relaxed text-muted-foreground">
+              <div className="flex items-center gap-2 font-semibold text-foreground mb-1">
+                <HelpCircle size={14} className="text-primary" />
+                API Développeur TikTok (En cours de validation)
+              </div>
+              L'intégration OAuth directe attend l'approbation de l'équipe TikTok pour le scope <code>video.publish</code>. Utilisez les onglets <b>Violentmonkey</b> ou <b>Playwright</b> pour publier immédiatement.
+            </div>
+
+            {!user ? (
           <div className="p-6 text-center border border-border rounded-lg bg-card/50 flex flex-col items-center gap-3">
             <Shield className="text-muted-foreground" size={32} />
             <div className="font-semibold text-base">Creator Account Required</div>
@@ -592,8 +761,10 @@ export function TikTokPublishDialog({
             )}
           </div>
         )}
+      </TabsContent>
+    </Tabs>
 
-        {error && (
+    {error && (
           <div className="p-2.5 bg-destructive/10 text-destructive text-xs rounded border border-destructive/20 flex items-start gap-2">
             <AlertCircle size={15} className="shrink-0 mt-0.5" />
             <span>{error}</span>

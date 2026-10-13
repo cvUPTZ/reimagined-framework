@@ -122,4 +122,41 @@ describe('TikTok Integration Rules & Publishing Plan', () => {
 
     expect(() => postSchema.parse(withoutConsent)).toThrow();
   });
+
+  describe('Alternative Direct Auto-Posting (Violentmonkey & Playwright)', () => {
+    it('provides a valid Violentmonkey userscript in public and scripts directories', async () => {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+
+      const publicPath = path.resolve(process.cwd(), 'public/userscripts/tiktok-qed-autopost.user.js');
+      const scriptsPath = path.resolve(process.cwd(), 'scripts/violentmonkey/tiktok-qed-autopost.user.js');
+
+      expect(fs.existsSync(publicPath)).toBe(true);
+      expect(fs.existsSync(scriptsPath)).toBe(true);
+
+      const content = fs.readFileSync(publicPath, 'utf-8');
+      expect(content).toContain('// ==UserScript==');
+      expect(content).toContain('@match        https://www.tiktok.com/creator-center/upload*');
+      expect(content).toContain('@name         QED Math Studio — TikTok Creator Auto-Poster');
+      expect(content).toContain('qed-tiktok-hud');
+    });
+
+    it('provides Playwright automated publishing CLI script and package scripts', async () => {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+
+      const scriptPath = path.resolve(process.cwd(), 'scripts/tiktok-playwright-poster.mjs');
+      expect(fs.existsSync(scriptPath)).toBe(true);
+
+      const scriptContent = fs.readFileSync(scriptPath, 'utf-8');
+      expect(scriptContent).toContain('--video');
+      expect(scriptContent).toContain('--caption');
+      expect(scriptContent).toContain('.tiktok-browser-profile');
+      expect(scriptContent).toContain('chromium.launchPersistentContext');
+
+      const pkgJson = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf-8'));
+      expect(pkgJson.scripts['tiktok:post']).toBe('node scripts/tiktok-playwright-poster.mjs');
+      expect(pkgJson.scripts['tiktok:install-browsers']).toBe('playwright install chromium');
+    });
+  });
 });

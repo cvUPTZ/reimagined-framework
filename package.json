@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "tiktok:post": "node scripts/tiktok-playwright-poster.mjs",
+    "tiktok:install-browsers": "playwright install chromium"
   },
   "overrides": {
     "rolldown": "1.2.1"
