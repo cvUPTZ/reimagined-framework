@@ -39,6 +39,21 @@ export function wrapFormula(line: string, maxChars: number): string[] {
 const PHASE_AR: Record<string, string> = {
   Hook: 'البداية', Statement: 'نص التمرين', Step: 'خطوة', Diagnosis: 'التشخيص', Intuition: 'الفهم',
   Solution: 'الحل', Challenge: 'تحدٍّ', 'End card': 'الخاتمة', Rule: 'القاعدة', Mistake: 'الخطأ الشائع',
+  Predict: 'توقّع', Observe: 'لاحظ', Move: 'حرّك واكتشف', General: 'الحالة العامة',
+  Explore: 'استكشف', Calculate: 'احسب',
 };
 /** Arabic label for a scene phase; unknown labels are returned untouched. */
 export const phaseLabel = (phase: string) => PHASE_AR[phase] ?? phase;
+
+/**
+ * Isolates math expressions in Unicode LTR directional isolate (\u2066...\u2069).
+ * Prevents bidi scrambling (e.g. Arabic question marks or text flipping "(2+3)² = ؟" into "؟ = ²(2+3)").
+ */
+export function bidiIsolateMath(text: string): string {
+  if (!text) return '';
+  if (text.includes('\u2066')) return text;
+  return text.replace(
+    /(?:(?:\([^\)]+\)|[0-9a-zA-Z\u0304]+)[\^²³]?(?:\s*[+\-*·×/=≠≤≥→⇒]\s*(?:\([^\)]+\)|[0-9a-zA-Z\u0304?؟]+)[\^²³]?)+|\([0-9a-zA-Z\u0304+\-*·×/]+\)[\^²³]?)/g,
+    match => `\u2066${match.trim()}\u2069`,
+  );
+}

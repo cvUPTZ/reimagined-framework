@@ -103,9 +103,9 @@ function makeKit(al: number, reveal = 1): Kit {
       els.push(
         <text
           key={n++}
-          x={Math.max(42, Math.min(348, x))}
-          y={Math.max(64, Math.min(312, y))}
-          fontSize={Math.max(14, size)}
+          x={Math.max(12, Math.min(378, x))}
+          y={Math.max(48, Math.min(326, y))}
+          fontSize={Math.max(13, size)}
           fontWeight={600}
           fontFamily="Tajawal, Cairo, sans-serif"
           textAnchor="middle"
@@ -160,28 +160,86 @@ const groups: Model = ({ kit, a, b, c, params, st, p, pulse }) => {
 };
 
 const area: Model = ({ kit, a, b, c, st, p, pulse }) => {
-  const n = a + b, sq = !c, h = sq ? n : c, U = Math.min(BW * 0.86 / n, (MH - 34) / h), x0 = CX - n * U / 2, y0 = MY - h * U / 2 + 14;
+  const n = a + b, sq = !c, h = sq ? n : c, U = Math.min(BW * 0.82 / n, (MH - 42) / h);
+  const x0 = CX - n * U / 2 + 10, y0 = MY - h * U / 2 + 18;
   const sp = st === 'move' ? a + Math.sin(p * 6.2832) * Math.max(0.5, Math.min(a, b) * 0.9) : a, q = n - sp;
   let res: Result;
   if (!sq) {
-    kit.box(x0, y0, sp * U, h * U, VI, 0.35, 0.9); kit.box(x0 + sp * U, y0, q * U, h * U, TE, 0.35, 0.9);
-    kit.tx(String(f1(sp * h)), x0 + sp * U / 2, y0 + h * U / 2, 22, WH, 1); kit.tx(String(f1(q * h)), x0 + (sp + q / 2) * U, y0 + h * U / 2, 22, WH, 1);
-    res = { readout: st === 'predict' ? `${c}×(${a}+${b}) = ؟` : st === 'observe' ? `المجموع ثابت = ${n * h}` : `${f1(sp * h)} + ${f1(q * h)} = ${n * h}`, formula: `${c}×(${a}+${b}) = ${c}×${a} + ${c}×${b} = ${c * a + c * b}` };
-  } else {
-    const bad = st === 'observe', cr = bad ? RD : AM, ca = bad ? 0.25 + 0.4 * pulse : 0.35;
-    kit.box(x0, y0, sp * U, sp * U, VI, 0.35, 0.9); kit.box(x0 + sp * U, y0, q * U, sp * U, cr, ca, 0.9);
-    kit.box(x0, y0 + sp * U, sp * U, q * U, cr, ca, 0.9); kit.box(x0 + sp * U, y0 + sp * U, q * U, q * U, TE, 0.35, 0.9);
-    if (sp * U > 24) kit.tx(String(f1(sp * sp)), x0 + sp * U / 2, y0 + sp * U / 2, 20, WH, 1);
-    if (q * U > 24) {
-      kit.tx(String(f1(q * q)), x0 + (sp + q / 2) * U, y0 + (sp + q / 2) * U, 20, WH, 1);
-      kit.tx(String(f1(sp * q)), x0 + (sp + q / 2) * U, y0 + sp * U / 2, 18, WH, 1);
-      kit.tx(String(f1(sp * q)), x0 + sp * U / 2, y0 + (sp + q / 2) * U, 18, WH, 1);
+    kit.box(x0, y0, sp * U, h * U, VI, 0.42, 0.95);
+    kit.box(x0 + sp * U, y0, q * U, h * U, TE, 0.42, 0.95);
+    if (st === 'predict') {
+      kit.tx('؟', x0 + sp * U / 2, y0 + h * U / 2, 24, WH, 0.85);
+      kit.tx('؟', x0 + (sp + q / 2) * U, y0 + h * U / 2, 24, WH, 0.85);
+    } else {
+      kit.tx(sp * U > 36 ? `${c}×${f1(sp)} = ${f1(sp * h)}` : String(f1(sp * h)), x0 + sp * U / 2, y0 + h * U / 2, 17, WH, 1);
+      kit.tx(q * U > 36 ? `${c}×${f1(q)} = ${f1(q * h)}` : String(f1(q * h)), x0 + (sp + q / 2) * U, y0 + h * U / 2, 17, WH, 1);
     }
-    res = { readout: st === 'predict' ? `(${a}+${b})² = ؟` : st === 'observe' ? `${a}²+${b}² = ${a * a + b * b} ≠ ${n * n}` : `${f1(sp * sp)} + 2×${f1(sp * q)} + ${f1(q * q)} = ${n * n}`, formula: `(${a}+${b})² = ${a}² + 2×${a}×${b} + ${b}² = ${n * n}`, bad };
+    res = {
+      readout: st === 'predict' ? `${c}×(${a}+${b}) = ؟` : st === 'observe' ? `المجموع ثابت = ${n * h}` : `${f1(sp * h)} + ${f1(q * h)} = ${n * h}`,
+      formula: `${c}×(${a}+${b}) = ${c}×${a} + ${c}×${b} = ${c * a + c * b}`,
+    };
+  } else {
+    const bad = st === 'observe';
+    const crossFill = bad ? RD : AM;
+    const crossAlpha = bad ? 0.35 + 0.45 * pulse : 0.38;
+    kit.box(x0, y0, sp * U, sp * U, VI, 0.45, 0.95, 2);
+    kit.box(x0 + sp * U, y0, q * U, sp * U, crossFill, crossAlpha, 0.95, 2);
+    kit.box(x0, y0 + sp * U, sp * U, q * U, crossFill, crossAlpha, 0.95, 2);
+    kit.box(x0 + sp * U, y0 + sp * U, q * U, q * U, TE, 0.45, 0.95, 2);
+
+    if (st === 'predict') {
+      // In predict stage: keep tiles masked with question marks so nothing is given away
+      if (sp * U > 24) kit.tx('؟', x0 + sp * U / 2, y0 + sp * U / 2, 22, WH, 0.85);
+      if (q * U > 24) {
+        kit.tx('؟', x0 + (sp + q / 2) * U, y0 + (sp + q / 2) * U, 22, WH, 0.85);
+        kit.tx('؟', x0 + (sp + q / 2) * U, y0 + sp * U / 2, 20, WH, 0.85);
+        kit.tx('؟', x0 + sp * U / 2, y0 + (sp + q / 2) * U, 20, WH, 0.85);
+      }
+    } else {
+      // In observe / move / general: teach where numbers come from with factor equations
+      const showExpanded = sp * U > 48;
+      if (sp * U > 24) {
+        kit.tx(showExpanded ? `${f1(sp)}² = ${f1(sp * sp)}` : String(f1(sp * sp)), x0 + sp * U / 2, y0 + sp * U / 2, 17, WH, 1);
+      }
+      if (q * U > 24) {
+        kit.tx(showExpanded ? `${f1(q)}² = ${f1(q * q)}` : String(f1(q * q)), x0 + (sp + q / 2) * U, y0 + (sp + q / 2) * U, 17, WH, 1);
+        kit.tx(showExpanded ? `${f1(q)}×${f1(sp)} = ${f1(sp * q)}` : String(f1(sp * q)), x0 + (sp + q / 2) * U, y0 + sp * U / 2, 15, bad ? RD : WH, 1);
+        kit.tx(showExpanded ? `${f1(sp)}×${f1(q)} = ${f1(sp * q)}` : String(f1(sp * q)), x0 + sp * U / 2, y0 + (sp + q / 2) * U, 15, bad ? RD : WH, 1);
+      }
+    }
+    res = {
+      readout: st === 'predict' ? `(${a}+${b})² = ؟` : st === 'observe' ? `${a}²+${b}² = ${a * a + b * b} ≠ ${n * n}` : `${f1(sp * sp)} + 2×${f1(sp * q)} + ${f1(q * q)} = ${n * n}`,
+      formula: `(${a}+${b})² = ${a}² + 2×${a}×${b} + ${b}² = ${n * n}`,
+      bad,
+    };
   }
-  kit.tx(String(f1(sp)), x0 + sp * U / 2, y0 - 14, 13, VI, 1); kit.tx(String(f1(q)), x0 + (sp + q / 2) * U, y0 - 14, 13, TE, 1);
-  kit.tx(String(h), x0 - 16, y0 + h * U / 2, 13, WH, 1);
-  if (sq && st === 'observe') kit.tx(`✗ نسينا 2×${a}×${b} = ${2 * a * b}`, CX, y0 + h * U + 20, 13, RD, 1);
+
+  // Top dimension labels
+  kit.ln(x0, y0 - 6, x0 + sp * U, y0 - 6, VI, 0.8, 1.5);
+  kit.tx(String(f1(sp)), x0 + sp * U / 2, y0 - 15, 15, VI, 1);
+  kit.ln(x0 + sp * U, y0 - 6, x0 + n * U, y0 - 6, TE, 0.8, 1.5);
+  kit.tx(String(f1(q)), x0 + (sp + q / 2) * U, y0 - 15, 15, TE, 1);
+
+  // Left dimension labels & brackets
+  if (sq) {
+    kit.ln(x0 - 6, y0, x0 - 6, y0 + sp * U, VI, 0.8, 1.5);
+    kit.tx(String(f1(sp)), x0 - 16, y0 + sp * U / 2, 15, VI, 1);
+    kit.ln(x0 - 6, y0 + sp * U, x0 - 6, y0 + n * U, TE, 0.8, 1.5);
+    kit.tx(String(f1(q)), x0 - 16, y0 + (sp + q / 2) * U, 15, TE, 1);
+
+    // Left total bracket
+    kit.ln(x0 - 26, y0, x0 - 26, y0 + h * U, WH, 0.45, 1);
+    kit.ln(x0 - 30, y0, x0 - 24, y0, WH, 0.45, 1);
+    kit.ln(x0 - 30, y0 + h * U, x0 - 24, y0 + h * U, WH, 0.45, 1);
+    kit.tx(String(h), x0 - 36, y0 + h * U / 2, 16, WH, 1);
+  } else {
+    kit.ln(x0 - 6, y0, x0 - 6, y0 + h * U, WH, 0.6, 1.5);
+    kit.tx(String(h), x0 - 16, y0 + h * U / 2, 16, WH, 1);
+  }
+
+  if (sq && st === 'observe') {
+    kit.tx(`✗ نسينا 2×${a}×${b} = ${2 * a * b}`, CX, y0 + h * U + 24, 15, RD, 1);
+  }
   return res;
 };
 
@@ -749,8 +807,8 @@ export function renderLegacyVisual(input: LegacyVisualInput): ReactNode | null {
       <svg x="0" y="48" width="390" height="278" viewBox="0 48 390 278" overflow="hidden">
         {kit.els}
       </svg>
-      {res.readout && <text x={CX} y="18" textAnchor="middle" fontSize={res.readout.length > 36 ? 15 : 18} fontWeight={600} fontFamily="Tajawal, sans-serif" fill={bad ? RD : WH} opacity={al} style={{ unicodeBidi: 'plaintext' }}>{res.readout}</text>}
-      {res.formula && st === 'general' && <text x={CX} y="365" textAnchor="middle" fontSize={res.formula.length > 40 ? 14 : 17} fontFamily="Tajawal, sans-serif" fill={AM} opacity={diagramReveal(input.elapsed, dur, 0.5)} style={{ unicodeBidi: 'plaintext' }}>{res.formula}</text>}
+      {res.readout && <text x={CX} y="18" textAnchor="middle" fontSize={res.readout.length > 36 ? 15 : 18} fontWeight={600} fontFamily="Tajawal, sans-serif" fill={bad ? RD : WH} opacity={al} direction="ltr" style={{ unicodeBidi: 'isolate' }}>{res.readout}</text>}
+      {res.formula && st === 'general' && <text x={CX} y="365" textAnchor="middle" fontSize={res.formula.length > 40 ? 14 : 17} fontFamily="Tajawal, sans-serif" fill={AM} opacity={diagramReveal(input.elapsed, dur, 0.5)} direction="ltr" style={{ unicodeBidi: 'isolate' }}>{res.formula}</text>}
     </g>
   );
 }

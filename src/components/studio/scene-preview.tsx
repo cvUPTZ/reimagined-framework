@@ -7,7 +7,7 @@ import { hasLegacyRenderer, renderLegacyVisual, type VisualParams, type VisualSt
 import { TELEGRAM_QR_SRC, TELEGRAM_BOT_HANDLE, TELEGRAM_BOT_URL } from '@/assets/telegram-qr';
 import { PromoMarketingScene } from './promo-marketing-scene';
 import { SyncedPromoScene } from './synced-promo-scene';
-import { hasArabic, phaseLabel, prettifyMath, wrapFormula } from '@/lib/math-text';
+import { bidiIsolateMath, hasArabic, phaseLabel, prettifyMath, wrapFormula } from '@/lib/math-text';
 import { mapLegacyModel } from '@/lib/legacy-library';
 
 /**
@@ -98,18 +98,44 @@ export function ScenePreview({
   const legacyName = typeof scene.legacy?.['visualModel'] === 'string' ? (scene.legacy['visualModel'] as string) : '';
   const visual = legacyName && !hasLegacyRenderer(legacyName) && mapLegacyModel(legacyName) === 'none' ? 'none' : (scene.visual ?? 'curve');
 
-  // Dynamic vertical layout: when lines increase, push title slightly up and visual card down
-  // ensuring zero overlap between Arabic title text and visual intuition cards
+  // Dynamic layout: In 16:9 landscape, distribute content in a balanced 2-column broadcast view
   const textLineCount = lines.length || 1;
   const extraLines = Math.max(0, textLineCount - 2);
   const titleOffset = extraLines * (fontSize * 0.4);
   const visualPush = extraLines * (fontSize * 0.9);
 
-  const baseTitleY = (portrait ? 218 : 120) + (scene.textY ?? 0) - (portrait ? titleOffset : 0);
-  const visualY = (portrait ? 376 : 230) + (scene.visualY ?? 0) + (portrait ? visualPush : 0);
-  const visualScale = (portrait ? 1 : 0.68) * (scene.visualScale ?? 1);
-  const expressionY = (portrait ? 795 : 485) + (scene.expressionY ?? 0);
-  const textX = textAlign === 'center' ? width / 2 : textAlign === 'left' ? (portrait ? 36 : 48) : width - (portrait ? 36 : 48);
+  const hasVisualCard = (scene.showVisual ?? true) && (legacyName !== '' || visual !== 'none');
+  const isLandscapeVisual = !portrait && hasVisualCard;
+
+  const baseTitleY = portrait
+    ? 218 + (scene.textY ?? 0) - titleOffset
+    : isLandscapeVisual
+      ? 195 + (scene.textY ?? 0)
+      : 180 + (scene.textY ?? 0);
+
+  const visualScale = (portrait ? 1 : isLandscapeVisual ? 0.96 : 0.68) * (scene.visualScale ?? 1);
+  const visualX = portrait ? width / 2 - 195 : isArabic ? 245 - 195 : 715 - 195;
+  const visualY = portrait
+    ? 376 + (scene.visualY ?? 0) + visualPush
+    : isLandscapeVisual
+      ? 110 + (scene.visualY ?? 0)
+      : 230 + (scene.visualY ?? 0);
+
+  const expressionY = portrait
+    ? 795 + (scene.expressionY ?? 0)
+    : isLandscapeVisual
+      ? 390 + (scene.expressionY ?? 0)
+      : 485 + (scene.expressionY ?? 0);
+
+  const defaultTextX = portrait
+    ? (textAlign === 'center' ? width / 2 : textAlign === 'left' ? 36 : width - 36)
+    : isLandscapeVisual
+      ? (isArabic
+          ? (textAlign === 'center' ? 695 : textAlign === 'left' ? 490 : 910)
+          : (textAlign === 'center' ? 265 : textAlign === 'left' ? 50 : 470))
+      : (textAlign === 'center' ? width / 2 : textAlign === 'left' ? 48 : width - 48);
+
+  const textX = defaultTextX;
   const textAnchor = textAlign === 'center' ? 'middle' : textAlign === 'left' ? 'start' : 'end';
   const legacyModel = typeof scene.legacy?.['visualModel'] === 'string' ? (scene.legacy['visualModel'] as string) : '';
   const promoLayout = typeof scene.legacy?.['promoLayout'] === 'string' ? (scene.legacy['promoLayout'] as string) : '';
@@ -247,7 +273,7 @@ export function ScenePreview({
           >
             {lines.slice(0, 5).map((line, i) => (
               <tspan key={i} x={textX} dy={i ? fontSize * lineHeight : 0} textAnchor={textAnchor} style={{ unicodeBidi: "plaintext" }}>
-                {line}
+                {bidiIsolateMath(line)}
               </tspan>
             ))}
           </text>
@@ -255,10 +281,10 @@ export function ScenePreview({
 
         {/* Lesson diagram */}
         {(scene.showVisual ?? true) && legacyNode && (
-          <g transform={`translate(${width / 2 - 195},${visualY - 20}) scale(${visualScale})`}>{legacyNode}</g>
+          <g transform={`translate(${visualX},${visualY - 20}) scale(${visualScale})`}>{legacyNode}</g>
         )}
         {(scene.showVisual ?? true) && !legacyNode && visual !== 'none' && (
-          <g transform={`translate(${width / 2 - 195},${visualY}) scale(${visualScale})`}>
+          <g transform={`translate(${visualX},${visualY}) scale(${visualScale})`}>
             <OpenMathDiagram visual={visual} expression={scene.expression ?? project.expression ?? 'x^2'} elapsed={animTime} duration={scene.duration}/>
 
           </g>
@@ -272,7 +298,7 @@ export function ScenePreview({
           const isDupOfBody = lines.some(l => l.trim().toLowerCase() === expr.toLowerCase());
           if (isDupOfBody) return null;
           return (
-            <text x={width / 2} y={expressionY + (visual === 'tangent' || visual === 'integral' ? 26 : 0)} textAnchor="middle" className="art-expression" fill="var(--foreground)" direction="ltr">
+            <text x={isLandscapeVisual ? textX : width / 2} y={expressionY + (visual === 'tangent' || visual === 'integral' ? 26 : 0)} textAnchor={isLandscapeVisual ? textAnchor : 'middle'} className="art-expression" fill="var(--foreground)" direction="ltr" style={{ unicodeBidi: 'isolate' }}>
               {prettifyMath(expr)}
             </text>
           );
@@ -357,63 +383,69 @@ export function ScenePreview({
       </g>
 
       {/* Telegram QR Watermark Corner Badge (rendered across all scenes in safe corner) */}
-      {(project.qrWatermark ?? (scene.showQrBadge ?? true)) && !promoLayout && (
-        <g
-          transform={
-            portrait
-              ? `translate(${width - 76}, 28)`
-              : `translate(${width - 82}, 24)`
-          }
-          className="art-qr-corner-badge"
-          opacity={0.96}
-        >
-          {/* Pure white backing for instant camera scannability */}
-          <rect
-            x={0}
-            y={0}
-            width={48}
-            height={48}
-            rx={8}
-            fill="#ffffff"
-            stroke={accentColor ?? '#38bdf8'}
-            strokeWidth={1.2}
-            filter={`url(#softBloom-${id})`}
-          />
-          {/* QR Code image */}
-          <image
-            href={TELEGRAM_QR_SRC}
-            x={3}
-            y={3}
-            width={42}
-            height={42}
-            preserveAspectRatio="xMidYMid meet"
-          />
-          {/* Telegram pill handle under the QR code */}
-          <g transform="translate(24, 56)">
+      {(project.qrWatermark ?? (scene.showQrBadge ?? true)) && !promoLayout && (() => {
+        const qrSize = portrait ? 54 : 74;
+        const pillWidth = portrait ? 76 : 100;
+        const pillHeight = portrait ? 16 : 22;
+        const pillFontSize = portrait ? 8.5 : 11;
+        const cornerX = portrait ? width - 82 : width - 106;
+        const cornerY = portrait ? 26 : 22;
+        const brandAccent = accentColor ?? '#f59e0b';
+
+        return (
+          <g
+            transform={`translate(${cornerX}, ${cornerY})`}
+            className="art-qr-corner-badge"
+            opacity={0.96}
+          >
+            {/* Pure white backing for instant camera scannability */}
             <rect
-              x={-34}
-              y={-7}
-              width={68}
-              height={14}
-              rx={4}
-              fill="rgba(8, 14, 24, 0.9)"
-              stroke={accentColor ?? '#38bdf8'}
-              strokeWidth={0.8}
-            />
-            <text
               x={0}
-              y={3}
-              textAnchor="middle"
-              fontSize={7.5}
-              fontWeight="bold"
-              fill={accentColor ?? '#38bdf8'}
-              fontFamily="ui-monospace, monospace"
-            >
-              {project.qrBotHandle ?? TELEGRAM_BOT_HANDLE}
-            </text>
+              y={0}
+              width={qrSize}
+              height={qrSize}
+              rx={10}
+              fill="#ffffff"
+              stroke={brandAccent}
+              strokeWidth={1.5}
+              filter={`url(#softBloom-${id})`}
+            />
+            {/* QR Code image */}
+            <image
+              href={TELEGRAM_QR_SRC}
+              x={4}
+              y={4}
+              width={qrSize - 8}
+              height={qrSize - 8}
+              preserveAspectRatio="xMidYMid meet"
+            />
+            {/* Telegram pill handle under the QR code */}
+            <g transform={`translate(${qrSize / 2}, ${qrSize + (portrait ? 12 : 15)})`}>
+              <rect
+                x={-pillWidth / 2}
+                y={-pillHeight / 2}
+                width={pillWidth}
+                height={pillHeight}
+                rx={5}
+                fill="rgba(8, 14, 24, 0.92)"
+                stroke={brandAccent}
+                strokeWidth={1}
+              />
+              <text
+                x={0}
+                y={portrait ? 3 : 4}
+                textAnchor="middle"
+                fontSize={pillFontSize}
+                fontWeight="bold"
+                fill={brandAccent}
+                fontFamily="ui-monospace, monospace"
+              >
+                {project.qrBotHandle ?? TELEGRAM_BOT_HANDLE}
+              </text>
+            </g>
           </g>
-        </g>
-      )}
+        );
+      })()}
 
       {safeZones && <rect x={width * 0.08} y={height * 0.07} width={width * 0.84} height={height * 0.81} className="art-safe" />}
 
