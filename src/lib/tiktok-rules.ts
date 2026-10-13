@@ -24,7 +24,7 @@ export function chunkEnd(start: number, size: number, chunkSize: number, chunkCo
   const chunkIndex = Math.floor(start / chunkSize);
   return chunkIndex >= chunkCount - 1 ? size : start + chunkSize;
 }
-export type TikTokPost = { privacy: string; duration: number; paidBrand?: boolean; ownBrand?: boolean };
+export type TikTokPost = { privacy: string; duration: number; paidBrand?: boolean; ownBrand?: boolean; allowComment?: boolean; allowDuet?: boolean; allowStitch?: boolean };
 export function validatePost(post: TikTokPost, creator: TikTokCreator) {
   if (!creator.privacy_level_options.includes(post.privacy)) throw new Error('Choose an available TikTok audience.');
   if (post.duration > creator.max_video_post_duration_sec) throw new Error(`This account allows videos up to ${creator.max_video_post_duration_sec} seconds.`);
