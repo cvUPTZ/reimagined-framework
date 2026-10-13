@@ -65,8 +65,8 @@ export const beginTikTokPost = createServerFn({ method: 'POST' }).middleware([re
       disable_duet: isPrivate ? true : !data.allowDuet,
       disable_stitch: isPrivate ? true : !data.allowStitch,
     };
-    if (data.ownBrand) post_info.brand_organic_toggle = true;
-    if (data.paidBrand) post_info.brand_content_toggle = true;
+    if (data.ownBrand) post_info['brand_organic_toggle'] = true;
+    if (data.paidBrand) post_info['brand_content_toggle'] = true;
 
     const result = await tiktokRequest<{ publish_id: string; upload_url: string }>(context.userId, '/post/publish/video/init/', {
       post_info,
