@@ -6,7 +6,9 @@ export const referenceProject: StudioProject = {
   id: 'qed-visual-derivative',
   name: 'الاشتقاق والمماس بصرياً (QED)',
   topic: 'فهم الاشتقاق ومعامل التوجيه',
+  mistake: 'الخلط بين قيمة الدالة f(x) وسرعة التغير اللحظي f\'(x)',
   expression: 'f(x) = x²',
+  remediation: 'العدد المشتق هو ميل المماس اللحظي: y = f\'(x₀)(x - x₀) + f(x₀)',
   scenes: [
     { id: 'visual-1', label: '01', title: 'رؤية جديدة للاشتقاق', body: 'ماذا يعني العدد المشتق\nفي الهندسة والفيزياء حقيقةً؟', duration: 4, kind: 'hook', phase: 'Hook', animation: 'Draw in', visual: 'curve', fontFamily: 'Tajawal', fontSize: 40 },
     { id: 'visual-2', label: '02', title: 'الفخ والخلط الشائع', body: 'قيمة الدالة f(x)\nليست هي سرعة التغير اللحظي.', duration: 5, kind: 'explain', phase: 'Diagnosis', animation: 'Fade', visual: 'curve', fontFamily: 'Tajawal', fontSize: 40 },
