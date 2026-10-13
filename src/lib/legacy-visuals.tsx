@@ -699,7 +699,7 @@ const complexModel: Model = ({ kit, a, b, params, st, p, pulse }) => {
   if (sh.has('B')) { kit.dot(X(re), Y(-im), 7, TE, g); kit.tx('z̄₁ = z₂', X(re) + 40, Y(-im) + 12, 15, TE, g); kit.ln(X(re), Y(im), X(re), Y(-im), WH, 0.25 + 0.15 * pulse, 1); }
   const cap = typeof params['__cap'] === 'string' ? (params['__cap'] as string) : '';
   return {
-    readout: cap || (sh.has('B') ? 'الجذران متناظران بالنسبة لمحور الفواصل' : sh.has('arc') ? 'العمدة: الزاوية مع محور الفواصل' : sh.has('circ') ? 'الطويلة: المسافة إلى المبدأ' : 'المستوي المركب'),
+    readout: cap || (sh.has('arc') ? 'العمدة: الزاوية مع محور الفواصل' : sh.has('circ') ? 'الطويلة: المسافة إلى المبدأ' : sh.has('B') ? 'الجذران متناظران بالنسبة لمحور الفواصل' : 'المستوي المركب'),
   };
 };
 
