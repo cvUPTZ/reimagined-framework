@@ -156,7 +156,58 @@ describe('TikTok Integration Rules & Publishing Plan', () => {
 
       const pkgJson = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf-8'));
       expect(pkgJson.scripts['tiktok:post']).toBe('node scripts/tiktok-playwright-poster.mjs');
+      expect(pkgJson.scripts['tiktok:plan']).toBe('node scripts/tiktok-plan-poster.mjs');
       expect(pkgJson.scripts['tiktok:install-browsers']).toBe('playwright install chromium');
+    });
+
+    it('provides Playwright plan batch scheduler script with argument parsing and file resolution', async () => {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+
+      const planPosterPath = path.resolve(process.cwd(), 'scripts/tiktok-plan-poster.mjs');
+      expect(fs.existsSync(planPosterPath)).toBe(true);
+
+      const content = fs.readFileSync(planPosterPath, 'utf-8');
+      expect(content).toContain('--today');
+      expect(content).toContain('--plan');
+      expect(content).toContain('--date');
+      expect(content).toContain('findVideoFile');
+      expect(content).toContain('chromium.launchPersistentContext');
+
+      const cp = await import('node:child_process');
+      const testPlanPath = path.resolve(process.cwd(), 'scripts/test-plan-fixture.json');
+      fs.writeFileSync(
+        testPlanPath,
+        JSON.stringify({
+          version: 1,
+          items: [
+            {
+              id: 'test-item-1',
+              entryId: 'custom-1',
+              date: '2026-10-15',
+              level: '4AM',
+              title: 'مفهوم القاسم المشترك الأكبر',
+              caption: 'درس تفاعلي',
+              hashtags: '#math #qed',
+              status: 'scheduled',
+              suggestedFileName: 'QED_4AM_sample.mp4',
+            },
+          ],
+        })
+      );
+
+      try {
+        const out = cp.execSync(
+          `node scripts/tiktok-plan-poster.mjs --plan "${testPlanPath}" --date 2026-10-15 --dry-run`,
+          { encoding: 'utf-8' }
+        );
+        expect(out).toContain('TikTok Plan Batch Auto-Poster');
+        expect(out).toContain('Target date filter: 2026-10-15');
+        expect(out).toContain('Matched items to post: 1');
+        expect(out).toContain('Dry run completed. No browser was launched.');
+      } finally {
+        if (fs.existsSync(testPlanPath)) fs.unlinkSync(testPlanPath);
+      }
     });
   });
 });

@@ -10,6 +10,8 @@ import {
   parseDateYMD,
   getChapterProductionStats,
   createProjectForConcept,
+  exportPlanForTikTok,
+  buildTikTokPayloadForEntry,
   type ScheduledPlanItem,
 } from '@/lib/curriculum-planner-store';
 
@@ -109,5 +111,34 @@ describe('Curriculum Planner Store & Matching Engine', () => {
     expect(project).toBeDefined();
     expect(project.scenes.length).toBeGreaterThanOrEqual(3);
     expect(project.topic).toBe(pgcdChapter.concepts[0]!.name);
+  });
+
+  it('builds TikTok payloads and exports structured plan for automation', () => {
+    const sampleEntry = allEntries[0]!;
+    const payload = buildTikTokPayloadForEntry(sampleEntry, '2026-10-18');
+
+    expect(payload.qed).toBe(true);
+    expect(payload.title).toContain(sampleEntry.topic);
+    expect(payload.caption).toContain(sampleEntry.topic);
+    expect(payload.hashtags).toContain('#رياضيات');
+    expect(payload.hashtags).toContain('#QED');
+    expect(payload.date).toBe('2026-10-18');
+
+    const schedule: Record<string, ScheduledPlanItem> = {
+      'sched-1': {
+        id: 'sched-1',
+        entryId: sampleEntry.id,
+        level: sampleEntry.level as any,
+        date: '2026-10-18',
+        status: 'scheduled',
+      },
+    };
+
+    const planExport = exportPlanForTikTok(schedule, allEntries);
+    expect(planExport.version).toBe(1);
+    expect(planExport.totalVideos).toBe(1);
+    expect(planExport.items[0]!.title).toBe(payload.title);
+    expect(planExport.items[0]!.suggestedFileName).toMatch(/\.mp4$/);
+    expect(planExport.items[0]!.caption).toBe(payload.caption);
   });
 });

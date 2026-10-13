@@ -512,6 +512,104 @@ export function exportPlanAsCSV(
   return '\ufeff' + csvContent;
 }
 
+/** Builds tags and payload for TikTok publishing tailored to Algerian curriculum */
+export function buildTikTokPayloadForEntry(entry: LegacyEntry, date?: string): {
+  qed: true;
+  title: string;
+  caption: string;
+  hashtags: string;
+  date: string;
+  level: string;
+  source: string;
+} {
+  const is4AM = entry.level === '4AM';
+  const levelTag = is4AM ? '#BEM2026 #بيام' : '#BAC2026 #بكالوريا';
+  const stageTag =
+    entry.source === 'mistake'
+      ? '#فخ_شائع #تنبيه'
+      : entry.source === 'intuition'
+        ? '#حدس_بصري #فهم'
+        : entry.source === 'ready'
+          ? '#تحدي_سريع #سؤال'
+          : '#تمرين_منهجي #حل_نموذجي';
+
+  const hashtags = `#رياضيات ${levelTag} #QED #الجزائر ${stageTag} #تعليم #maths`;
+  const cleanHook = entry.hook.replace(/\n+/g, ' — ').trim();
+  const caption = `${entry.topic} | ${entry.chapter}\n${cleanHook}\n${entry.summary ? `${entry.summary}\n` : ''}${hashtags}`.trim();
+
+  return {
+    qed: true,
+    title: `${entry.topic} (${entry.level})`,
+    caption,
+    hashtags,
+    date: date || formatDateYMD(new Date()),
+    level: entry.level,
+    source: entry.source,
+  };
+}
+
+export interface TikTokPlanItem {
+  id: string;
+  entryId: string;
+  date: string;
+  level: CurriculumLevel;
+  chapter: string;
+  topic: string;
+  source: LegacySource;
+  status: VideoPlanStatus;
+  title: string;
+  caption: string;
+  hashtags: string;
+  suggestedFileName: string;
+}
+
+export interface TikTokPlanExport {
+  exportedAt: string;
+  version: 1;
+  totalVideos: number;
+  items: TikTokPlanItem[];
+}
+
+/** Exports plan as structured JSON for automated TikTok publishing via Playwright or Violentmonkey */
+export function exportPlanForTikTok(
+  plan: Record<string, ScheduledPlanItem>,
+  entries: LegacyEntry[],
+): TikTokPlanExport {
+  const sortedItems = Object.values(plan).sort((a, b) => a.date.localeCompare(b.date));
+  const items: TikTokPlanItem[] = [];
+
+  for (const item of sortedItems) {
+    const entry = entries.find(e => e.id === item.entryId);
+    if (!entry) continue;
+
+    const payload = buildTikTokPayloadForEntry(entry, item.date);
+    const sanitizedTitle = entry.topic.replace(/[^\w\u0600-\u06FF\s-]/g, '').trim().replace(/\s+/g, '_');
+    const suggestedFileName = `QED_${item.level}_${item.date}_${sanitizedTitle}.mp4`;
+
+    items.push({
+      id: item.id,
+      entryId: item.entryId,
+      date: item.date,
+      level: item.level,
+      chapter: entry.chapter,
+      topic: entry.topic,
+      source: entry.source,
+      status: item.status,
+      title: payload.title,
+      caption: payload.caption,
+      hashtags: payload.hashtags,
+      suggestedFileName,
+    });
+  }
+
+  return {
+    exportedAt: new Date().toISOString(),
+    version: 1,
+    totalVideos: items.length,
+    items,
+  };
+}
+
 export interface ConceptCoverageItem {
   concept: ChapterConcept;
   availableFormats: LegacySource[];

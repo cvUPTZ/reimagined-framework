@@ -25,6 +25,8 @@ import {
   ChevronDown,
   ChevronUp,
   Share2,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScenePreview } from './scene-preview';
@@ -40,6 +42,8 @@ import {
   saveStoredPlan,
   generateAutoSchedule,
   exportPlanAsCSV,
+  exportPlanForTikTok,
+  buildTikTokPayloadForEntry,
   formatDateYMD,
   pad2,
   PRODUCTION_FORMATS,
@@ -196,6 +200,46 @@ export function CurriculumPlanner({
     a.click();
     URL.revokeObjectURL(url);
     onNotify('تم تصدير ملف الخطة (CSV) بنجاح');
+  }
+
+  function exportTikTokPlan() {
+    const planExport = exportPlanForTikTok(schedule, allEntries);
+    const jsonStr = JSON.stringify(planExport, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tiktok-plan-${level}-${formatDateYMD(new Date())}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    onNotify(`تم تصدير خطة تيك توك (${planExport.totalVideos} فيديو) بصيغة JSON لـ Playwright`);
+  }
+
+  async function copyViolentmonkeyPayload(entry: LegacyEntry, dateStr?: string) {
+    try {
+      const payload = buildTikTokPayloadForEntry(entry, dateStr);
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      onNotify(`تم نسخ بيانات نشر "${entry.topic}" إلى الحافظة!`);
+      window.open('https://www.tiktok.com/creator-center/upload', '_blank');
+    } catch {
+      onNotify(`تعذر نسخ بيانات النشر`);
+    }
+  }
+
+  function publishTodayVideo() {
+    const todayStr = formatDateYMD(new Date());
+    const targetDate = scheduledByDate[todayStr]?.length ? todayStr : selectedDate;
+    const vids = scheduledByDate[targetDate] ?? [];
+    if (!vids.length) {
+      onNotify(`لا توجد فيديوهات مجدولة ليوم ${targetDate}. يمكنك جدولة فيديو أولاً!`);
+      return;
+    }
+    const targetVideo = vids[0];
+    const proj = legacyToProject(targetVideo);
+    if (proj) {
+      setTiktokProject(proj);
+      onNotify(`جاري فتح نافذة نشر تيك توك لفيديو: ${targetVideo.topic}`);
+    }
   }
 
   // Calendar rendering data
@@ -937,14 +981,20 @@ export function CurriculumPlanner({
       {plannerTab === 'calendar' && (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '16px 24px', overflowY: 'auto' }}>
           {/* Calendar Cadence Bar */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, background: 'var(--secondary)', padding: '10px 16px', borderRadius: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, background: 'var(--secondary)', padding: '10px 16px', borderRadius: 6, flexWrap: 'wrap', gap: 10 }}>
             <div>
               <strong style={{ fontSize: 13, display: 'block' }}>خطة النشر والوتيرة الأسبوعية</strong>
               <small style={{ color: 'var(--muted-foreground)', fontSize: 11 }}>3 فيديوهات أسبوعياً (السبت · الإثنين · الأربعاء) تضمن تغطية شاملة للمنهاج</small>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button size="sm" variant="default" style={{ fontSize: 11 }} onClick={triggerAutoPlan}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button size="sm" variant="default" style={{ fontSize: 11 }} onClick={publishTodayVideo}>
+                <Share2 size={13} style={{ marginLeft: 5 }} /> نشر فيديو اليوم 🚀
+              </Button>
+              <Button size="sm" variant="outline" style={{ fontSize: 11 }} onClick={triggerAutoPlan}>
                 <Sparkles size={13} style={{ marginLeft: 5 }} /> جدولة تلقائية للشهر
+              </Button>
+              <Button size="sm" variant="outline" style={{ fontSize: 11 }} onClick={exportTikTokPlan}>
+                <ExternalLink size={13} style={{ marginLeft: 5 }} /> خطة تيك توك (JSON)
               </Button>
               <Button size="sm" variant="outline" style={{ fontSize: 11 }} onClick={exportCSV}>
                 <Download size={13} style={{ marginLeft: 5 }} /> تصدير الخطة (CSV)
@@ -1052,11 +1102,11 @@ export function CurriculumPlanner({
           {/* Selected Date Drawer Banner */}
           <div style={{ marginTop: 14, padding: 12, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <strong style={{ fontSize: 12 }}>
+              <strong style={{ fontSize: 13 }}>
                 الفيديوهات المجدولة ليوم {selectedDate} ({scheduledByDate[selectedDate]?.length ?? 0} فيديو)
               </strong>
-              <small style={{ display: 'block', color: 'var(--muted-foreground)', fontSize: 11 }}>
-                انقر على أي فيديو لفتحه مباشرة في المحرر.
+              <small style={{ display: 'block', color: 'var(--muted-foreground)', fontSize: 11, marginTop: 2 }}>
+                يمكنك نشر أي فيديو مباشرة إلى تيك توك بنقرة واحدة، أو نسخه لـ Violentmonkey، أو فتحه في المحرر.
               </small>
             </div>
             {scheduledByDate[selectedDate]?.length ? (
@@ -1077,6 +1127,132 @@ export function CurriculumPlanner({
                 <Trash2 size={12} style={{ marginLeft: 4 }} /> إفراغ اليوم
               </Button>
             ) : null}
+          </div>
+
+          {/* Scheduled Video Cards for Selected Date */}
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(scheduledByDate[selectedDate] ?? []).map(v => {
+              const planItem = schedule[v.id];
+              const isPublished = planItem?.status === 'published';
+              const stageInfo = STAGES.find(s => s.source === v.source);
+              const stageIcon = v.source === 'intuition' ? '💡' : v.source === 'mistake' ? '🩹' : v.source === 'ready' ? '🎬' : '📝';
+
+              return (
+                <div
+                  key={v.id}
+                  style={{
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 260, flex: 1 }}>
+                    <span style={{ fontSize: 22 }}>{stageIcon}</span>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: 13 }}>{v.topic}</strong>
+                        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'var(--secondary)', color: 'var(--muted-foreground)' }}>
+                          {stageInfo?.label}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            fontWeight: 700,
+                            background: isPublished ? 'color-mix(in oklab, var(--primary) 15%, transparent)' : 'color-mix(in oklab, var(--gold) 15%, transparent)',
+                            color: isPublished ? 'var(--primary)' : 'var(--gold)',
+                          }}
+                        >
+                          {isPublished ? '✅ تم النشر' : '⏳ مجدول للنشر'}
+                        </span>
+                      </div>
+                      <small style={{ color: 'var(--muted-foreground)', fontSize: 11, display: 'block', marginTop: 2 }}>
+                        {v.chapter} · {v.level} · {v.hook.slice(0, 50)}...
+                      </small>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {/* 1-Click TikTok Dialog */}
+                    <Button
+                      size="sm"
+                      variant="default"
+                      style={{ fontSize: 11, height: 28, gap: 4 }}
+                      onClick={() => {
+                        const proj = legacyToProject(v);
+                        if (proj) setTiktokProject(proj);
+                      }}
+                    >
+                      <Share2 size={12} /> نشر على تيك توك
+                    </Button>
+
+                    {/* Quick Violentmonkey Payload & Open TikTok Studio */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      style={{ fontSize: 11, height: 28, gap: 4 }}
+                      onClick={() => copyViolentmonkeyPayload(v, selectedDate)}
+                      title="نسخ بيانات النشر للحافظة وفتح TikTok Creator Studio تلقائياً"
+                    >
+                      <Copy size={12} /> نسخ لـ Violentmonkey
+                    </Button>
+
+                    {/* Open in Studio Canvas */}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      style={{ fontSize: 11, height: 28, gap: 4 }}
+                      onClick={() => openProject(v)}
+                    >
+                      <Play size={12} /> فتح في المحرر
+                    </Button>
+
+                    {/* Toggle Status */}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      style={{ fontSize: 11, height: 28, gap: 4 }}
+                      onClick={() => toggleStatus(v.id)}
+                      title="تبديل حالة النشر (مجدول / منشور)"
+                    >
+                      <CheckCircle2 size={12} style={{ color: isPublished ? 'var(--primary)' : 'inherit' }} />
+                      {isPublished ? 'إلغاء وضع منشور' : 'تحديد كمنشور'}
+                    </Button>
+
+                    {/* Remove from day */}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      style={{ height: 28, width: 28, color: 'var(--destructive)' }}
+                      onClick={() => {
+                        setSchedule(prev => {
+                          const c = { ...prev };
+                          delete c[v.id];
+                          return c;
+                        });
+                        onNotify(`تم حذف "${v.topic}" من موعد ${selectedDate}`);
+                      }}
+                      title="إزالة من جدول هذا اليوم"
+                    >
+                      <Trash2 size={12} />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {(!scheduledByDate[selectedDate] || scheduledByDate[selectedDate].length === 0) && (
+              <div style={{ padding: 18, textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 12, background: 'var(--card)', borderRadius: 6, border: '1px dashed var(--border)' }}>
+                لا توجد فيديوهات مجدولة لهذا التاريخ ({selectedDate}). يمكنك سحب أي فيديو أو النقر على "جدولة تلقائية للشهر" في الأعلى.
+              </div>
+            )}
           </div>
         </div>
       )}
