@@ -28,7 +28,7 @@ export const threeBlueOneBrownProject: StudioProject = {
   cta: 'استكشف المزيد من الرياضيات البصرية مع QED',
   brandKit: {
     name: 'Cinematic Math',
-    brandName: '3B1B × QED',
+    brandName: 'QED',
     tagline: 'البصيرة والبرهان الهندسي',
     footnote: 'جوهر الرياضيات البصرية · ∎',
     accentColor: '#38bdf8',

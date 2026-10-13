@@ -66,7 +66,7 @@ export interface AudioTrackConfig {
 export const defaultBrandKits: Record<string, BrandKit> = {
   threeblueonebrown: {
     name: '3Blue1Brown Classic',
-    brandName: '3B1B × QED',
+    brandName: 'QED',
     tagline: 'البصيرة والبرهان الهندسي',
     footnote: 'جوهر الرياضيات البصرية · ∎',
     accentColor: '#38bdf8',
@@ -74,7 +74,7 @@ export const defaultBrandKits: Record<string, BrandKit> = {
   },
   qed: {
     name: 'QED Classic',
-    brandName: '3B1B × QED',
+    brandName: 'QED',
     tagline: 'البصيرة والبرهان الهندسي',
     footnote: 'MOMENTS OF UNDERSTANDING · ∎',
     accentColor: '#38bdf8',

@@ -673,6 +673,34 @@ const logModel: Model = ({ kit, a, st, p, pulse }) => {
   };
 };
 
+/** Complex plane: conjugate roots, modulus circle and argument, driven by the step's diagram hints. */
+const complexModel: Model = ({ kit, a, b, params, st, p, pulse }) => {
+  const sh = new Set(Array.isArray(params['__sh']) ? (params['__sh'] as string[]) : ['A', 'B']);
+  const re = params['a'] != null ? a : 1, im = params['b'] != null ? b : Math.sqrt(3);
+  const s = 46, ox = CX - 20, oy = MY;
+  const X = (x: number) => ox + x * s, Y = (y: number) => oy - y * s;
+  const g = st === 'predict' ? 0.2 : st === 'move' ? p : 1;
+  kit.ln(42, oy, 352, oy, sh.has('realred') ? RD : WH, sh.has('realred') ? 0.9 : 0.45, sh.has('realred') ? 3 : 1.4);
+  kit.ln(ox, 316, ox, 58, WH, 0.45, 1.4);
+  kit.tx('Re', 336, oy + 18, 14, WH, 0.7); kit.tx('Im', ox + 20, 66, 14, WH, 0.7);
+  for (const t of [-2, -1, 1, 2, 3]) { kit.ln(X(t), oy - 4, X(t), oy + 4, WH, 0.5, 1); kit.tx(String(t), X(t), oy + 18, 13, WH, 0.55); }
+  const r = Math.hypot(re, im), th = Math.atan2(im, re);
+  if (sh.has('circ')) kit.els.push(<circle key="mod" cx={ox} cy={oy} r={r * s} fill="none" stroke={ink(VI, 0.8 * g)} strokeWidth={2.4} strokeDasharray="5 6" />);
+  if (sh.has('rad') || sh.has('arc')) { kit.ln(ox, oy, X(re), Y(im), AM, g, 2.6); kit.tx(`|z| = ${f1(r)}`, (ox + X(re)) / 2 - 30, (oy + Y(im)) / 2, 14, AM, g); }
+  if (sh.has('arc') || sh.has('tri')) {
+    const rr = 26, end = th * g;
+    kit.els.push(<path key="arg" d={`M ${ox + rr} ${oy} A ${rr} ${rr} 0 0 0 ${ox + rr * Math.cos(end)} ${oy - rr * Math.sin(end)}`} fill="none" stroke={ink(AM, 0.95)} strokeWidth={2.2} />);
+    kit.tx('θ', ox + 40, oy - 16, 15, AM, g);
+  }
+  if (sh.has('tri')) { kit.ln(X(re), Y(im), X(re), oy, WH, 0.5 * g, 1.2); }
+  if (sh.has('A') || sh.has('arc') || sh.has('rad')) { kit.dot(X(re), Y(im), 7, VI, g); kit.tx('z₁', X(re) + 22, Y(im) - 10, 15, VI, g); }
+  if (sh.has('B')) { kit.dot(X(re), Y(-im), 7, TE, g); kit.tx('z̄₁ = z₂', X(re) + 40, Y(-im) + 12, 15, TE, g); kit.ln(X(re), Y(im), X(re), Y(-im), WH, 0.25 + 0.15 * pulse, 1); }
+  const cap = typeof params['__cap'] === 'string' ? (params['__cap'] as string) : '';
+  return {
+    readout: cap || (sh.has('B') ? 'الجذران متناظران بالنسبة لمحور الفواصل' : sh.has('arc') ? 'العمدة: الزاوية مع محور الفواصل' : sh.has('circ') ? 'الطويلة: المسافة إلى المبدأ' : 'المستوي المركب'),
+  };
+};
+
 export const LEGACY_RENDERERS: Record<string, Model> = {
   groups, area, stair, balance, venn, gcd, fraction,
   tangent, secant: tangent, zoom: tangent, chain: tangent, flip: tangent,
@@ -682,11 +710,11 @@ export const LEGACY_RENDERERS: Record<string, Model> = {
   // Curves, limits & variation
   curve: curveModel, limit: curveModel, asym: curveModel, variation: curveModel, convex: curveModel,
   quad: curveModel, func: curveModel, ivt: curveModel, squeeze: curveModel, dist: curveModel,
-  geo: curveModel, triangle: curveModel,
+
   inverse: inverseModel, linear: linearModel, system: systemModel,
   // Trig, waves & complex numbers
-  wave: waveModel, trig: waveModel, sinx: waveModel, clock: waveModel, crot: waveModel,
-  carg: waveModel, cplx: waveModel,
+  wave: waveModel, trig: waveModel, sinx: waveModel, clock: waveModel,
+  cplx: complexModel, carg: complexModel, crot: complexModel,
   // Exponentials, growth & logarithms
   exponential: expModel, expk: expModel, growth: expModel, powers: expModel, logadd: logModel,
 };
@@ -704,7 +732,8 @@ export function renderLegacyVisual(input: LegacyVisualInput): ReactNode | null {
   const model = LEGACY_RENDERERS[input.model];
   if (!model) return null;
   const st = input.stage ?? 'general';
-  const { v, a, b, c } = readParams(input.model, input.params);
+  const merged: VisualParams = { ...(input.params ?? {}), ...(input.diagram?.sh ? { __sh: input.diagram.sh } : {}), ...(input.diagram?.cap ? { __cap: input.diagram.cap } : {}) } as VisualParams;
+  const { v, a, b, c } = readParams(input.model, merged);
   const dur = Math.max(0.5, input.duration);
   const u = clamp01(input.elapsed / dur);
   const p = st === 'move' ? ez(Math.min(1, u * 1.08)) : st === 'predict' ? 0 : 1;
