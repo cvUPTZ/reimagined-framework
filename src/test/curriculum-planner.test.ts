@@ -12,6 +12,7 @@ import {
   createProjectForConcept,
   exportPlanForTikTok,
   buildTikTokPayloadForEntry,
+  WEEK_DAYS_CONFIG,
   type ScheduledPlanItem,
 } from '@/lib/curriculum-planner-store';
 
@@ -65,6 +66,33 @@ describe('Curriculum Planner Store & Matching Engine', () => {
     for (const item of items) {
       const date = parseDateYMD(item.date);
       expect(DEFAULT_PLAN_CONFIG.days).toContain(date.getDay());
+    }
+  });
+
+  it('allows full user control over posting days of week and cadence', () => {
+    // 7 weekdays configured
+    expect(WEEK_DAYS_CONFIG.length).toBe(7);
+    expect(WEEK_DAYS_CONFIG.map(w => w.label)).toContain('السبت');
+    expect(WEEK_DAYS_CONFIG.map(w => w.label)).toContain('الأحد');
+    expect(WEEK_DAYS_CONFIG.map(w => w.label)).toContain('الخميس');
+
+    // Custom configuration: e.g. Sunday (0), Tuesday (2), Thursday (4)
+    const customConfig = {
+      perDay: 2,
+      days: [0, 2, 4],
+      weeks: 3,
+      startDate: '2026-10-18', // A Sunday
+    };
+
+    const schedule: Record<string, ScheduledPlanItem> = {};
+    const auto = generateAutoSchedule(allEntries, schedule, '4AM', customConfig);
+    const items = Object.values(auto);
+
+    expect(items.length).toBeGreaterThan(0);
+    // Every scheduled item must strictly fall on Sunday (0), Tuesday (2), or Thursday (4)
+    for (const item of items) {
+      const date = parseDateYMD(item.date);
+      expect(customConfig.days).toContain(date.getDay());
     }
   });
 

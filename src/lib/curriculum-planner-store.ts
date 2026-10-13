@@ -91,6 +91,16 @@ export const DEFAULT_PLAN_CONFIG: PlanConfig = {
   weeks: 4,
 };
 
+export const WEEK_DAYS_CONFIG: Array<{ day: number; label: string; short: string }> = [
+  { day: 6, label: 'السبت', short: 'سبت' },
+  { day: 0, label: 'الأحد', short: 'أحد' },
+  { day: 1, label: 'الإثنين', short: 'إثنين' },
+  { day: 2, label: 'الثلاثاء', short: 'ثلاثاء' },
+  { day: 3, label: 'الأربعاء', short: 'أربعاء' },
+  { day: 4, label: 'الخميس', short: 'خميس' },
+  { day: 5, label: 'الجمعة', short: 'جمعة' },
+];
+
 export const CURRICULUM_CHAPTERS: Record<CurriculumLevel, CurriculumChapter[]> = {
   '4AM': [
     {
@@ -411,6 +421,25 @@ export function loadStoredPlan(): Record<string, ScheduledPlanItem> {
 export function saveStoredPlan(plan: Record<string, ScheduledPlanItem>): void {
   try {
     localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(plan));
+  } catch {
+    // browser quota limit
+  }
+}
+
+export const PLAN_CONFIG_STORAGE_KEY = 'qed_curriculum_plan_config_v1';
+
+export function loadStoredPlanConfig(): PlanConfig {
+  try {
+    const raw = localStorage.getItem(PLAN_CONFIG_STORAGE_KEY);
+    return raw ? { ...DEFAULT_PLAN_CONFIG, ...JSON.parse(raw) } : DEFAULT_PLAN_CONFIG;
+  } catch {
+    return DEFAULT_PLAN_CONFIG;
+  }
+}
+
+export function saveStoredPlanConfig(config: PlanConfig): void {
+  try {
+    localStorage.setItem(PLAN_CONFIG_STORAGE_KEY, JSON.stringify(config));
   } catch {
     // browser quota limit
   }

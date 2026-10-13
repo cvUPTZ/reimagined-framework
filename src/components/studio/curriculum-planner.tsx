@@ -27,6 +27,7 @@ import {
   Share2,
   Copy,
   ExternalLink,
+  Settings2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScenePreview } from './scene-preview';
@@ -40,6 +41,8 @@ import {
   matchesChapter,
   loadStoredPlan,
   saveStoredPlan,
+  loadStoredPlanConfig,
+  saveStoredPlanConfig,
   generateAutoSchedule,
   exportPlanAsCSV,
   exportPlanForTikTok,
@@ -47,6 +50,7 @@ import {
   formatDateYMD,
   pad2,
   PRODUCTION_FORMATS,
+  WEEK_DAYS_CONFIG,
   getChapterProductionStats,
   createProjectForConcept,
   matchEntryToConcept,
@@ -55,6 +59,7 @@ import {
   type ScheduledPlanItem,
   type CurriculumChapter,
   type ChapterConcept,
+  type PlanConfig,
 } from '@/lib/curriculum-planner-store';
 
 export function CurriculumPlanner({
@@ -79,10 +84,16 @@ export function CurriculumPlanner({
   const [calMonth, setCalMonth] = useState<Date>(() => new Date());
   const [selectedDate, setSelectedDate] = useState<string>(() => formatDateYMD(new Date()));
   const [schedule, setSchedule] = useState<Record<string, ScheduledPlanItem>>(() => loadStoredPlan());
+  const [planConfig, setPlanConfig] = useState<PlanConfig>(() => loadStoredPlanConfig());
+  const [showCadenceSettings, setShowCadenceSettings] = useState<boolean>(true);
 
   useEffect(() => {
     saveStoredPlan(schedule);
   }, [schedule]);
+
+  useEffect(() => {
+    saveStoredPlanConfig(planConfig);
+  }, [planConfig]);
 
   const allEntries = useMemo(() => getAllCurriculumEntries(), []);
   const chapters = CURRICULUM_CHAPTERS[level];
@@ -179,15 +190,58 @@ export function CurriculumPlanner({
     onNotify(`تغيّرت الحالة إلى: ${next}`);
   }
 
-  function triggerAutoPlan() {
-    const updated = generateAutoSchedule(allEntries, schedule, level);
-    const addedCount = Object.keys(updated).length - Object.keys(schedule).length;
+  function togglePlanDay(dayNum: number) {
+    setPlanConfig(prev => {
+      const exists = prev.days.includes(dayNum);
+      const nextDays = exists
+        ? prev.days.filter(d => d !== dayNum)
+        : [...prev.days, dayNum].sort((a, b) => a - b);
+      if (nextDays.length === 0) {
+        onNotify('يجب الإبقاء على يوم واحد على الأقل للنشر!');
+        return prev;
+      }
+      return { ...prev, days: nextDays };
+    });
+  }
+
+  function updatePlanPerDay(perDay: number) {
+    setPlanConfig(prev => ({ ...prev, perDay: Math.max(1, Math.min(5, perDay)) }));
+  }
+
+  function updatePlanWeeks(weeks: number) {
+    setPlanConfig(prev => ({ ...prev, weeks: Math.max(1, Math.min(16, weeks)) }));
+  }
+
+  function triggerAutoPlan(overrideExisting = false) {
+    if (planConfig.days.length === 0) {
+      onNotify('يرجى تحديد يوم واحد على الأقل للنشر أسبوعياً!');
+      return;
+    }
+    const base = overrideExisting ? {} : schedule;
+    const updated = generateAutoSchedule(allEntries, base, level, planConfig);
+    const addedCount = Object.keys(updated).length - (overrideExisting ? 0 : Object.keys(schedule).length);
     setSchedule(updated);
     if (addedCount > 0) {
-      onNotify(`تمت جدولة ${addedCount} فيديوهات تلقائياً لـ ${level}!`);
+      onNotify(`تمت جدولة ${addedCount} فيديوهات تلقائياً لـ ${level} وفق الأيام المحددة!`);
     } else {
       onNotify(`جميع فيديوهات ${level} مجدولة بالفعل.`);
     }
+  }
+
+  function changeVideoScheduledDate(entryId: string, newDate: string) {
+    if (!newDate) return;
+    setSchedule(prev => {
+      const existing = prev[entryId];
+      if (!existing) return prev;
+      return {
+        ...prev,
+        [entryId]: {
+          ...existing,
+          date: newDate,
+        },
+      };
+    });
+    onNotify(`تم نقل موعد الفيديو إلى ${newDate}`);
   }
 
   function exportCSV() {
@@ -980,25 +1034,145 @@ export function CurriculumPlanner({
       {/* VIEW 3: Interactive Publishing Calendar */}
       {plannerTab === 'calendar' && (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '16px 24px', overflowY: 'auto' }}>
-          {/* Calendar Cadence Bar */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, background: 'var(--secondary)', padding: '10px 16px', borderRadius: 6, flexWrap: 'wrap', gap: 10 }}>
-            <div>
-              <strong style={{ fontSize: 13, display: 'block' }}>خطة النشر والوتيرة الأسبوعية</strong>
-              <small style={{ color: 'var(--muted-foreground)', fontSize: 11 }}>3 فيديوهات أسبوعياً (السبت · الإثنين · الأربعاء) تضمن تغطية شاملة للمنهاج</small>
+          {/* Calendar Cadence Bar with Interactive Day Controller */}
+          <div style={{ marginBottom: 16, background: 'var(--card)', border: '1px solid var(--border)', padding: '14px 18px', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: 14 }}>خطة النشر والوتيرة الأسبوعية</strong>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 12,
+                      background: 'color-mix(in oklab, var(--primary) 15%, transparent)',
+                      color: 'var(--primary)',
+                    }}
+                  >
+                    {planConfig.days.length * planConfig.perDay} فيديوهات أسبوعياً ({planConfig.days.length} أيام × {planConfig.perDay} فيديو/يوم)
+                  </span>
+                </div>
+                <small style={{ color: 'var(--muted-foreground)', fontSize: 11, display: 'block', marginTop: 3 }}>
+                  اختر أيام النشر التي تناسبك أدناه (السبت، الأحد، ...) لتعديل جدول البث وتوزيع فيديوهات المنهاج عليها تلقائياً.
+                </small>
+              </div>
+
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Button size="sm" variant="default" style={{ fontSize: 11, height: 28 }} onClick={publishTodayVideo}>
+                  <Share2 size={13} style={{ marginLeft: 5 }} /> نشر فيديو اليوم 🚀
+                </Button>
+                <Button size="sm" variant="outline" style={{ fontSize: 11, height: 28 }} onClick={() => triggerAutoPlan(false)}>
+                  <Sparkles size={13} style={{ marginLeft: 5 }} /> تطبيق الجدولة وفق الأيام
+                </Button>
+                <Button size="sm" variant="ghost" style={{ fontSize: 11, height: 28, color: 'var(--muted-foreground)' }} onClick={() => triggerAutoPlan(true)} title="مسح الجدولة السابقة وإعادة توزيع كل الفيديوهات من الصفر">
+                  <RotateCcw size={12} style={{ marginLeft: 4 }} /> إعادة الجدولة كلياً
+                </Button>
+                <Button size="sm" variant="outline" style={{ fontSize: 11, height: 28 }} onClick={exportTikTokPlan}>
+                  <ExternalLink size={13} style={{ marginLeft: 5 }} /> خطة تيك توك (JSON)
+                </Button>
+                <Button size="sm" variant="outline" style={{ fontSize: 11, height: 28 }} onClick={exportCSV}>
+                  <Download size={13} style={{ marginLeft: 5 }} /> CSV
+                </Button>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Button size="sm" variant="default" style={{ fontSize: 11 }} onClick={publishTodayVideo}>
-                <Share2 size={13} style={{ marginLeft: 5 }} /> نشر فيديو اليوم 🚀
-              </Button>
-              <Button size="sm" variant="outline" style={{ fontSize: 11 }} onClick={triggerAutoPlan}>
-                <Sparkles size={13} style={{ marginLeft: 5 }} /> جدولة تلقائية للشهر
-              </Button>
-              <Button size="sm" variant="outline" style={{ fontSize: 11 }} onClick={exportTikTokPlan}>
-                <ExternalLink size={13} style={{ marginLeft: 5 }} /> خطة تيك توك (JSON)
-              </Button>
-              <Button size="sm" variant="outline" style={{ fontSize: 11 }} onClick={exportCSV}>
-                <Download size={13} style={{ marginLeft: 5 }} /> تصدير الخطة (CSV)
-              </Button>
+
+            {/* Interactive Day Selector Chips & Cadence Tuning */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+              {/* 7 Days of the Week Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted-foreground)', marginLeft: 4 }}>
+                  أيام النشر المعتمدة:
+                </span>
+                {WEEK_DAYS_CONFIG.map(wd => {
+                  const isSelected = planConfig.days.includes(wd.day);
+                  return (
+                    <button
+                      key={wd.day}
+                      type="button"
+                      onClick={() => togglePlanDay(wd.day)}
+                      style={{
+                        fontSize: 11,
+                        padding: '4px 10px',
+                        borderRadius: 20,
+                        border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)',
+                        background: isSelected ? 'var(--primary)' : 'var(--background)',
+                        color: isSelected ? 'var(--primary-foreground)' : 'var(--foreground)',
+                        fontWeight: isSelected ? 700 : 500,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        transition: 'all 0.15s ease',
+                      }}
+                      title={`انقر لـ ${isSelected ? 'إلغاء' : 'تفعيل'} النشر يوم ${wd.label}`}
+                    >
+                      {isSelected && <Check size={11} />}
+                      {wd.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Per-day and weeks tuners */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                {/* Videos per Day */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>فيديوهات/اليوم:</span>
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    {[1, 2, 3].map(num => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => updatePlanPerDay(num)}
+                        style={{
+                          fontSize: 11,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          border: planConfig.perDay === num ? '1px solid var(--primary)' : '1px solid var(--border)',
+                          background: planConfig.perDay === num ? 'color-mix(in oklab, var(--primary) 20%, var(--card))' : 'var(--background)',
+                          color: planConfig.perDay === num ? 'var(--primary)' : 'inherit',
+                          fontWeight: planConfig.perDay === num ? 700 : 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Duration / Horizon */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>المدة:</span>
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    {[
+                      { weeks: 2, label: 'أسبوعين' },
+                      { weeks: 4, label: 'شهر' },
+                      { weeks: 8, label: 'شهرين' },
+                      { weeks: 12, label: 'فصل' },
+                    ].map(opt => (
+                      <button
+                        key={opt.weeks}
+                        type="button"
+                        onClick={() => updatePlanWeeks(opt.weeks)}
+                        style={{
+                          fontSize: 11,
+                          padding: '2px 7px',
+                          borderRadius: 4,
+                          border: planConfig.weeks === opt.weeks ? '1px solid var(--primary)' : '1px solid var(--border)',
+                          background: planConfig.weeks === opt.weeks ? 'color-mix(in oklab, var(--primary) 20%, var(--card))' : 'var(--background)',
+                          color: planConfig.weeks === opt.weeks ? 'var(--primary)' : 'inherit',
+                          fontWeight: planConfig.weeks === opt.weeks ? 700 : 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1225,6 +1399,25 @@ export function CurriculumPlanner({
                       <CheckCircle2 size={12} style={{ color: isPublished ? 'var(--primary)' : 'inherit' }} />
                       {isPublished ? 'إلغاء وضع منشور' : 'تحديد كمنشور'}
                     </Button>
+
+                    {/* Move/Reschedule Date Picker */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--background)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }} title="نقل هذا الفيديو إلى تاريخ آخر">
+                      <span style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>نقل:</span>
+                      <input
+                        type="date"
+                        aria-label="تغيير تاريخ النشر"
+                        value={selectedDate}
+                        onChange={e => changeVideoScheduledDate(v.id, e.target.value)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          fontSize: 10,
+                          color: 'var(--foreground)',
+                          outline: 'none',
+                          cursor: 'pointer',
+                        }}
+                      />
+                    </div>
 
                     {/* Remove from day */}
                     <Button
