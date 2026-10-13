@@ -492,7 +492,7 @@ const disc: Model = ({ kit, b, c, st, pulse }) => {
     kit.tx('لا يقطع المحور!', CX, MY - MH * 0.32, 14, RD, 0.6 + 0.4 * pulse);
   }
   const dc = D > 0 ? TE : D === 0 ? AM : RD;
-  kit.tx(`Δ = ${b}² − 4×1×${c} = ${D}`, CX, TOP + 26, 15, dc, 1);
+  kit.tx(st === 'predict' ? 'Δ = b² − 4ac = ؟' : `Δ = ${b}² − 4×1×${c} = ${D}`, CX, TOP + 26, 15, dc, 1);
   return {
     readout: st === 'predict' ? 'كم حلّاً للمعادلة ؟' : D > 0 ? `Δ = ${D} > 0  ⇒  حلّان` : D === 0 ? `Δ = 0  ⇒  حلّ مزدوج` : `Δ = ${D} < 0  ⇒  لا حلّ`,
     formula: `Δ = b² − 4ac = ${D}`, bad: D < 0,
@@ -511,7 +511,7 @@ const sqrtModel: Model = ({ kit, a, st, p, pulse }) => {
     kit.ln(x0, y0 + i * U, x0 + s, y0 + i * U, WH, 0.18 * g, 1);
   }
   kit.ln(x0, y0 + s + 12, x0 + s, y0 + s + 12, AM, 0.95, 2.5);
-  kit.tx(`√${area2}${Number.isInteger(side) ? ` = ${side}` : ` ≈ ${f1(side)}`}`, CX, y0 + s + 30, 15, AM, 1);
+  kit.tx(st === 'predict' ? `√${area2} = ؟` : `√${area2}${Number.isInteger(side) ? ` = ${side}` : ` ≈ ${f1(side)}`}`, CX, y0 + s + 30, 15, AM, 1);
   kit.tx(`المساحة = ${area2}`, CX, y0 + s / 2, 18, WH, 0.9);
   if (st === 'observe' && !Number.isInteger(side)) kit.tx('ليس عدداً صحيحاً!', CX, y0 - 22, 14, RD, 0.5 + 0.5 * pulse);
   return {
