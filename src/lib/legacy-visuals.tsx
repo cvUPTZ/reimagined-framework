@@ -13,6 +13,8 @@ export interface VisualParams { [key: string]: unknown }
 export interface LegacyVisualInput {
   model: string;
   params?: VisualParams | undefined;
+  /** per-step diagram hints from solve lessons (shapes to show, caption) */
+  diagram?: { sh?: string[]; cap?: string } | null | undefined;
   stage?: VisualStage | undefined;
   /** seconds since the scene started */
   elapsed: number;
