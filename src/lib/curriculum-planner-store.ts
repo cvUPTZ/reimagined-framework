@@ -603,7 +603,7 @@ export function createProjectForConcept(
     level: chapter.level,
     chapter: chapter.name,
     topic: concept.name,
-    hook: `${concept.name} في ${chapter.level}\nهل تعرف السر الحقيقي؟ 🤔`,
+    hook: `${concept.name} في ${chapter.level}\nهل تعرف السر الحقيقي؟`,
     model,
     summary: concept.description,
   };

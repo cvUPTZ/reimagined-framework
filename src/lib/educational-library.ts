@@ -15,6 +15,8 @@ export interface EducationalLesson {
   remediation: string;
   cta: string;
   visualModel: MathVisualModel;
+  legacyModel?: string;
+  legacyParams?: Record<string, unknown>;
   storyArc: {
     hook: string;
     problem: string;
@@ -269,7 +271,9 @@ export const educationalLessons: EducationalLesson[] = [
     diagnostic: 'نسيان أن الدوران زاوية، والتحاكي نسبة، والانسحاب شعاع.',
     remediation: 'الضرب في e^{iθ} يدير الشعاع بزاوية θ، والضرب في r يمدده بالنسبة r.',
     cta: 'تعرف على طبيعة التحويل النقطي في ثوانٍ',
-    visualModel: 'wave',
+    visualModel: 'none',
+    legacyModel: 'cplx',
+    legacyParams: { a: 1, b: 1.732, __sh: ['A', 'B', 'circ', 'rad', 'arc'] },
     storyArc: {
       hook: 'العدد التخيلي i² = -1\nالذي فتح أبواب الهندسة الدورانية!',
       problem: 'كيف يمكن لعدد جبري\nأن يعبر عن دوران وتحاكي في المستوي؟',
@@ -361,7 +365,7 @@ export const educationalLessons: EducationalLesson[] = [
     diagnostic: 'إذا كان المجموع يختلف عن 1، فهناك قيمة منسية أو خطأ حسابي.',
     remediation: 'التحقق الدائم: مجموع الاحتمالات = 1، والأمل الرياضياتي هو المتوسط المرجح.',
     cta: 'احسب الأمل والتباين في جدول واحد منظم',
-    visualModel: 'number-line',
+    visualModel: 'none',
     storyArc: {
       hook: 'هل اللعبة عادلة؟\nكيف تتوقع الربح والخسارة رياضياً؟',
       problem: 'رمي نرد وسحب كرات:\nكيف نلخص كل النتائج الممكنة في رقم واحد؟',
@@ -384,7 +388,7 @@ export const educationalLessons: EducationalLesson[] = [
     diagnostic: 'الشعاع الناظمي عمودي على المستوي، بينما شعاع التوجيه موازٍ للمستقيم.',
     remediation: 'معادلة المستوي تُبنى من شعاعه الناظمي العمودي ونقطة تنتمي إليه.',
     cta: 'احسب المسافة بين نقطة ومستوٍ في خطوة واحدة',
-    visualModel: 'curve',
+    visualModel: 'none',
     storyArc: {
       hook: 'كيف نحدد موقع جدار أو سطح مائل\nفي الفضاء ثلاثي الأبعاد؟',
       problem: 'نقطة واحدة لا تكفي لتحديد المستوي!\nما هو العنصر الحاسم الذي يحدد اتجاهه؟',
@@ -426,6 +430,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       expression: lesson.expression,
       fontFamily: 'Tajawal',
       fontSize: 40,
+      ...(lesson.legacyModel ? { legacy: { visualModel: lesson.legacyModel, visualParams: lesson.legacyParams, visualStage: 'predict' as const } } : {}),
     },
     {
       id: makeId(),
@@ -440,6 +445,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       expression: lesson.expression,
       fontFamily: 'Tajawal',
       fontSize: 40,
+      ...(lesson.legacyModel ? { legacy: { visualModel: lesson.legacyModel, visualParams: lesson.legacyParams, visualStage: 'observe' as const } } : {}),
     },
     {
       id: makeId(),
@@ -454,6 +460,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       expression: lesson.expression,
       fontFamily: 'Tajawal',
       fontSize: 40,
+      ...(lesson.legacyModel ? { legacy: { visualModel: lesson.legacyModel, visualParams: lesson.legacyParams, visualStage: 'move' as const } } : {}),
     },
     {
       id: makeId(),
@@ -468,6 +475,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       expression: lesson.expression,
       fontFamily: 'Tajawal',
       fontSize: 38,
+      ...(lesson.legacyModel ? { legacy: { visualModel: lesson.legacyModel, visualParams: lesson.legacyParams, visualStage: 'general' as const } } : {}),
     },
     {
       id: makeId(),
@@ -482,6 +490,7 @@ export function lessonToStudioProject(lesson: EducationalLesson): StudioProject 
       expression: lesson.expression,
       fontFamily: 'Tajawal',
       fontSize: 40,
+      ...(lesson.legacyModel ? { legacy: { visualModel: lesson.legacyModel, visualParams: lesson.legacyParams, visualStage: 'general' as const } } : {}),
     },
     {
       id: makeId(),

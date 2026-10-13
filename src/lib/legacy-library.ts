@@ -76,7 +76,7 @@ export function readyBase(r: RawReady): LegacyMistake | undefined {
   return undefined;
 }
 
-const defaultHook = (m: LegacyMistake) => `${m.mistake}\nهل هذا صحيح؟ 🤔`;
+const defaultHook = (m: LegacyMistake) => `${m.mistake}\nهل هذا صحيح؟`;
 
 export function listLegacy(source: LegacySource): LegacyEntry[] {
   switch (source) {
