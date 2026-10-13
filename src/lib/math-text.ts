@@ -26,14 +26,14 @@ export function wrapFormula(line: string, maxChars: number): string[] {
   if (line.length <= maxChars || hasArabic(line)) return [line];
   const parts = line.split(/\s(?=[=⇒⟺≤≥<>])/);
   if (parts.length < 2) return [line];
-  const out: string[] = [];
-  let cur = '';
-  for (const p of parts) {
-    if (cur && (cur + ' ' + p).length > maxChars) { out.push(cur); cur = p; }
-    else cur = cur ? `${cur} ${p}` : p;
+  // Balanced split: pick the break that keeps the longest line shortest (no orphan "= x" tails).
+  let best: string[] = [line], bestMax = Infinity;
+  for (let i = 1; i < parts.length; i++) {
+    const pair = [parts.slice(0, i).join(' '), parts.slice(i).join(' ')];
+    const m = Math.max(pair[0]!.length, pair[1]!.length);
+    if (m < bestMax) { bestMax = m; best = pair; }
   }
-  if (cur) out.push(cur);
-  return out;
+  return best;
 }
 
 const PHASE_AR: Record<string, string> = {
