@@ -139,22 +139,23 @@ const MODEL_MAP: Record<string, VisualModelType> = {
   volume: 'integral',
   
   // Trigonometry, Periodic Waves & Complex Numbers
-  trig: 'wave', sinx: 'wave', clock: 'wave', crot: 'wave', carg: 'wave', cplx: 'wave',
+  trig: 'wave', sinx: 'wave', clock: 'wave', crot: 'none', carg: 'none', cplx: 'none',
   
   // Exponentials, Growth, Logarithms & Powers
   expk: 'exponential', growth: 'exponential', logadd: 'exponential', powers: 'exponential',
   
   // Number line, Arithmetic, Sequences, Probability & Statistics
   numline: 'number-line', stair: 'number-line', gap: 'number-line', bounds: 'number-line',
-  seq: 'number-line', sieve: 'number-line', off: 'number-line', pct: 'number-line',
-  domino: 'number-line', binom: 'number-line', parity: 'number-line', pascal: 'number-line',
-  mean: 'number-line', prob: 'number-line', cond: 'number-line', tree: 'number-line',
+  // Subjects with no faithful drawing yet show none rather than an unrelated arithmetic diagram.
+  seq: 'none', sieve: 'none', off: 'number-line', pct: 'none',
+  domino: 'none', binom: 'none', parity: 'none', pascal: 'none',
+  mean: 'none', prob: 'none', cond: 'none', tree: 'none',
   num: 'number-line', gcd: 'number-line', fraction: 'number-line', balance: 'number-line',
   groups: 'number-line', venn: 'number-line',
   
   // Geometry & Triangles
-  thales: 'tangent', dist: 'curve', geo: 'curve', triangle: 'curve', euclid: 'number-line',
-  pythag: 'tangent', scale: 'tangent', inscr: 'wave', rtri: 'tangent',
+  thales: 'none', dist: 'curve', geo: 'none', triangle: 'none', euclid: 'none',
+  pythag: 'none', scale: 'none', inscr: 'none', rtri: 'none',
 };
 
 export const mapLegacyModel = (m: string): VisualModelType => MODEL_MAP[m] ?? 'none';

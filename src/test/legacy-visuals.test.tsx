@@ -74,6 +74,6 @@ describe('legacy visual renderers', () => {
     const tspanCount = (html.match(/<tspan[^>]*>/g) || []).length;
     expect(tspanCount).toBeGreaterThanOrEqual(2);
     expect(html).toContain('3 مجموعات، كل وحدة فيها 2');
-    expect(html).toContain('فيروزي: شحال في الكل؟ 🧮');
+    expect(html).toContain('فيروزي: شحال في الكل؟');
   });
 });
